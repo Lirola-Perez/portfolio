@@ -1,0 +1,55 @@
+# --- Python & Jupyter ---
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints
+.ipython/
+# Falls du lokale Python-Umgebungen hättest (als Backup):
+.venv/
+venv/
+env/
+
+# --- DEVOPS & SECURE CLOUD METADATA (SEHR WICHTIG für Kapitel 1.6 & 2.5) ---
+# Hier speichern wir Passwörter und DB-Credentials. NIEMALS committen!
+.env
+.env.local
+.env.*.local
+.envrc
+
+# --- Nix & Direnv ---
+# Wichtig: Versteckte Direnv-Ordner nicht hochladen
+.direnv/
+# Result-Links von Nix-Builds
+result
+result-*
+
+# --- VS Code ---
+# Wir ignorieren den lokalen Workspace-Status, 
+# aber behalten (optional) die Empfehlungen.
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# --- Data & Machine Learning (SEHR WICHTIG) ---
+# Ignoriere große Datensätze, die du für den Kurs lädst
+# McKinney und Géron nutzen oft .csv oder .h5 Dateien
+data/
+datasets/
+*.csv
+*.json
+*.h5
+*.tflite
+*.pb
+*.weights
+*.lock
+
+# --- OS / System ---
+.DS_Store
+Thumbs.db
+
+*.pdf
+*.odt#
+K4.0070*/
+*.odt
+*.png
+*.jpg
