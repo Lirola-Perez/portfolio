@@ -56,3 +56,6 @@ K4.0070*/
 
 # --- EnergyPlus --
 energyplus/
+simulation_runs/
+theory/
+*.err
