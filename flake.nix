@@ -18,11 +18,11 @@
       # =========================================================================
       # INNER LAYER: The FHS Sandbox ("The Ubuntu-like fake filesystem")
       # =========================================================================
-      # This creates a lightweight chroot-like sandbox environment. 
+      # This creates a lightweight chroot-like sandbox environment (buildFHSEnv). 
       # It maps standard directories like /lib64 and /usr/bin temporarily so 
       # pre-compiled binaries (like EnergyPlus) find the dependencies they expect.
       energyPlusEnv = pkgs.buildFHSEnv {
-        name = "energyplus-env";
+        name = "env-energyplus";
         # Tools and libraries available ONLY inside this sandbox layer
         targetPkgs = pkgs: with pkgs; [
           stdenv.cc.cc.lib # C++ standard libraries required for ML/TensorFlow wheels
@@ -38,13 +38,12 @@
           ]))
         ]; 
         runScript = "bash";
-        #extraBuildCommands = "export PATH=${PWD}/energyplus:${PATH}"; # Starts a bash shell when the sandbox is entered
         profile = ''
             echo "--- Initializing FHS Sandbox for Binaries ---"
             
             # Force the loader to find X11 and other standard libraries
             export LD_LIBRARY_PATH="${pkgs.libX11.out}/lib:${pkgs.libXext.out}/lib:${pkgs.zlib.out}/lib:${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
-            export PATH="$/home/lirola/PROJECT/PORTFOLIO/energyplus:$PATH"
+            # export PATH="$/home/lirola/PROJECT/PORTFOLIO/energyplus:$PATH"
             echo "Tip: Run 'source .venv/bin/activate' to use your pip/eppy environment."
             '';
       };
@@ -76,9 +75,9 @@
         shellHook = ''
           # Custom styled terminal prompt
           export PS1="\[\e[48;5;17m\]\[\e[1;38;5;82m\] PORTFOLIO Project. \[\e[0m\] \[\e[38;5;82m\]❯\[\e[0m\] \[\e[1;34m\]\w\[\e[0m\] \[\e[38;5;82m\]❯\[\e[0m\] "
-          export PATH="/home/lirola/PROJECT/PORTFOLIO/energyplus:$PATH"
+          ##export PATH="/home/lirola/PROJECT/PORTFOLIO/energyplus:$PATH"
           echo "--- Initializing Holistic Environment ---"
-          echo "Tip: Type 'energyplus-env' to drop inside the FHS binary execution sandbox."
+          echo "Tip: Type 'env-energyplus' to drop inside the FHS binary execution sandbox."
         '';
       };
     };
