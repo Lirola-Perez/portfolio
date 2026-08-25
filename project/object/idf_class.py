@@ -3,13 +3,12 @@ from eppy.results import readhtml
 import os
 
 class idf_project(IDF):
-    def __init__(self,eplus_path,eplus_project_path,idf_name,epw_name):
+    def __init__(self,e_path,e_proj_path,idf_name,epw_name):
         super().__init__()
-        self.idd = os.path.join(eplus_path, "Energy+.idd")
-        self.idf_path = os.path.join(eplus_project_path, idf_name + ".idf")
-        self.epw_path = os.path.join(eplus_project_path, "weather/", epw_name + ".epw")
-        self.out_path = os.path.join(eplus_project_path, "output/")
-        self.idf_name = idf_name
+        self.idd = os.path.join(e_path, "Energy+.idd")
+        self.idf_path = os.path.join(e_proj_path, "Eplusfiles/" + idf_name + ".idf")
+        self.epw_path = os.path.join(e_proj_path, "Eplusfiles/weather/", epw_name + ".epw")
+        self.out_path = os.path.join(e_proj_path, "Eplusfiles/output/")
 
     def get_idf(self):
         # 2. Set the IDD version so eppy knows how to parse it

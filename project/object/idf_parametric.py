@@ -1,34 +1,37 @@
-#from idf_class import idf_project
 import os
 from eppy.modeleditor import IDF
-#from project.object.idf_class import idf_project
 
 class idf_parametric():
     def __init__(self,idf_project):
-        self.idf_project = idf_project
+        self.idf = idf_project.get_idf()
+        self.dir = idf_project.idf_path
+        self.epw = idf_project.epw_path
+        self.idd = idf_project.idd
+        self.out = idf_project.out_path
         
-    def parametric_insulation(self,material_name:str, thickness:list):
-        self.idf = self.idf_project.get_idf()
-        dir_name = self.idf_project.idf_path
-        #print(dir_name)
-        #print(self.idf)
-        material_type = 'Material'
-        
-        insulation = self.idf.getobject(material_type,material_name)
-        print(insulation)
-        for thick in thickness:
-            insulation.Thickness = thick
-            self.do_saveas_param(thick,dir_name)
+    def parametrization(self,parameters:list):
+        type, name, self.parameter, range_values = parameters  
+        object = self.get_object(type,name)
 
-    def do_saveas_param(self, var, dir):
-            dir_name,ext = os.path.splitext(dir)
-            #print(dir_name,ext)
-            new_name = dir_name + "_" + str(var) + ".idf"
+        for var in range_values:
+            object[self.parameter] = var
+            new_path_name = self.do_saveas_param(var)
+            self.autorun(new_path_name)
+            
+    def do_saveas_param(self, var) -> str:
+            dir,_ = os.path.splitext(self.dir)
+            new_name = dir + "_" + self.parameter + "_" + str(var) + ".idf"
             print(new_name)
             self.idf.saveas(new_name)
+            return new_name
 
-    def result_read(self,name):
-        pass
+    def autorun(self,idf_name:str):
+        dir,name_file = os.path.split(idf_name)
+        name,_ = os.path.splitext(name_file)
+        output_dir = dir + '/output/' + name + '/'
+        idf = IDF(idf_name,self.epw)
+        idf.run(weather=self.epw,idd=self.idd,output_directory=output_dir)
 
-    def get_object(self,name):
-        pass
+    def get_object(self,type:str,name:str):
+        got_object = self.idf.getobject(type,name)
+        return got_object
