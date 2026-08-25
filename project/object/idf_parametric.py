@@ -9,14 +9,19 @@ class idf_parametric():
         self.idd = idf_project.idd
         self.out = idf_project.out_path
         
-    def parametrization(self,parameters:list):
+    def parametrization(self,parameters:list) -> list:
         type, name, self.parameter, range_values = parameters  
         object = self.get_object(type,name)
+        print(object)
+        files_param = []
 
         for var in range_values:
             object[self.parameter] = var
             new_path_name = self.do_saveas_param(var)
             self.autorun(new_path_name)
+            files_param.append(new_path_name)
+        print(files_param)
+        return files_param
             
     def do_saveas_param(self, var) -> str:
             dir,_ = os.path.splitext(self.dir)

@@ -1,11 +1,14 @@
 from eppy.modeleditor import IDF
 from eppy.results import readhtml
+import numpy as np
+import pandas as pd
 import os
 
 class idf_project(IDF):
     def __init__(self,e_path,e_proj_path,idf_name,epw_name):
         super().__init__()
         self.idd = os.path.join(e_path, "Energy+.idd")
+        print(self.idd)
         self.idf_path = os.path.join(e_proj_path, "Eplusfiles/" + idf_name + ".idf")
         self.epw_path = os.path.join(e_proj_path, "Eplusfiles/weather/", epw_name + ".epw")
         self.out_path = os.path.join(e_proj_path, "Eplusfiles/output/")
@@ -22,12 +25,14 @@ class idf_project(IDF):
         self.idf.run(weather=self.epw_path,idd=self.idd,output_directory=self.out_path)
         print(f'Run successfully. Results in {self.out_path}')
 
-    def results(self):
-        foutname = os.path.join(self.out_path,"eplustbl.htm")
-        # get a file handle to the html file
-        filehandle = open(foutname, 'r').read()
-        results =readhtml.titletable(filehandle)
-        return results
+    def get_results(self,file:str):
+        _,file_name = os.path.split(file)
+        name, _ = os.path.splitext(file_name)
+        foutname = os.path.join(self.out_path,name,"epluszsz.csv")
+        print('final path: ',foutname)
+        # PANDAS DataFrame Structure
+        result = pd.read_csv(foutname)
+        return result
 
     def do_saveas(self):
         dir_name,ext = os.path.splitext(self.idf_path)
