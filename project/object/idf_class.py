@@ -22,7 +22,8 @@ class idf_project(IDF):
         return self.idf
 
     def get_run(self):
-        self.idf.run(weather=self.epw_path,idd=self.idd,output_directory=self.out_path)
+        idf = self.get_idf()
+        idf.run(weather=self.epw_path,idd=self.idd,output_directory=self.out_path)
         print(f'Run successfully. Results in {self.out_path}')
 
     def get_results(self,file:str):
