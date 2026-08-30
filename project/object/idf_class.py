@@ -5,28 +5,27 @@ import pandas as pd
 import os
 
 class idf_project(IDF):
-    def __init__(self,e_path,e_proj_path,idf_name,epw_name):
+    def __init__(self,e_path:str,e_idf_folder:str,idf_name:str,epw_name:str):
         super().__init__()
-        self.idd = os.path.join(e_path, "Energy+.idd")
-        print(self.idd)
-        self.idf_path = os.path.join(e_proj_path, "Eplusfiles/" + idf_name + ".idf")
-        self.epw_path = os.path.join(e_proj_path, "Eplusfiles/weather/", epw_name + ".epw")
-        self.out_path = os.path.join(e_proj_path, "Eplusfiles/output/")
+        self.idd = e_path
+        
+        self.projects = e_idf_folder
 
-    def get_idf(self):
+    def get_idf(self,idf_name,epw_name):
+        idf_path = os.path.join(self.projects, idf_name + ".idf")
+        epw_path = os.path.join(self.projects, "weather/", epw_name + ".epw")
+        idd_path = os.path.join(self.idd, "Energy+.idd")
         # 2. Set the IDD version so eppy knows how to parse it
-        IDF.setiddname(self.idd)
+        print(idf_path,epw_path)
+        print(self.idd)
+        IDF.setiddname(idd_path)
         # 3. Load your IDF model
-        self.idf = IDF(self.idf_path, self.epw_path)
+        idf = IDF(idfname=idf_path, epw=epw_path)
         print("IDF loaded successfully using eppy!")
-        return self.idf
-
-    def get_run(self):
-        idf = self.get_idf()
-        idf.run(weather=self.epw_path,idd=self.idd,output_directory=self.out_path)
-        print(f'Run successfully. Results in {self.out_path}')
-
+        return idf, epw_path, idd_path
+            
     def get_results(self,file:str):
+        self.out_path = os.path.join(self.projects, "output/")
         _,file_name = os.path.split(file)
         name, _ = os.path.splitext(file_name)
         foutname = os.path.join(self.out_path,name,"epluszsz.csv")
@@ -34,14 +33,3 @@ class idf_project(IDF):
         # PANDAS DataFrame Structure
         result = pd.read_csv(foutname)
         return result
-
-    def do_saveas(self):
-        dir_name,ext = os.path.splitext(self.idf_path)
-        new_name = os.path.join(dir_name + "_copy.idf")
-        self.idf.saveas(new_name)
-
-    def get_type(self,name:str):
-        return self.idf.idfobjects[name]
-
-    def get_object(self,type:str,name:str):
-        return self.idf.getobject(type,name)
