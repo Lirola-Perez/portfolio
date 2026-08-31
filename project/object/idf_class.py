@@ -8,7 +8,6 @@ class idf_project(IDF):
     def __init__(self,e_path:str,e_idf_folder:str,idf_name:str,epw_name:str):
         super().__init__()
         self.idd = e_path
-        
         self.projects = e_idf_folder
 
     def get_idf(self,idf_name,epw_name):

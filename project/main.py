@@ -8,7 +8,7 @@ import pprint as pp
 e_idd_path = "/home/lirola/PROJECT/PORTFOLIO/energyplus"
 e_idf_folder = "/home/lirola/PROJECT/PORTFOLIO/project/Eplusfiles"
 idf_names = ['MultiStory']
-epw_names = ['Potsdam']
+epw_names = ['Potsdam','Madrid']
 
 def main():
     #projects = idf_projects(e_idd_path,e_idf_folder,idf_names,epw_names)
@@ -23,7 +23,7 @@ def main():
     parameter = [[idf_names[0], parameter_type, parameter_name, value_name, values],[idf_names[0], parameter_type, parameter_name, value_name_1, values]]
     
     output_path_list = projects.parametrization(parameter)
-    #output_path_list = ['/home/lirola/PROJECT/PORTFOLIO/project/Eplusfiles/output/MultiStory_Thickness_0.03/', '/home/lirola/PROJECT/PORTFOLIO/project/Eplusfiles/output/MultiStory_Thickness_0.1/']
+    #output_path_list = ['/home/lirola/PROJECT/PORTFOLIO/project/Eplusfiles/output/MultiStory_Madrid_Thickness_0.03/', '/home/lirola/PROJECT/PORTFOLIO/project/Eplusfiles/output/MultiStory_Potsdam_Thickness_0.1/']
     result_columns, result_data = projects.get_data(output_path_list)
     print(result_columns, result_data)
 
