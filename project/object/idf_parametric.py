@@ -1,5 +1,6 @@
 from .idf_class import idf_project
 from eppy.modeleditor import IDF
+import sqlite3
 import os
 import pandas as pd
 
@@ -9,57 +10,80 @@ class idf_parametric():
          self.epws = epw_names
          self.idd = idd_path
          self.idf_path = e_proj_folder
-         self.debug = False
-        
-    def parametrization(self,parameters:list) -> list:
-        self.files_output = []
-        
+
+    def parametrization(self,parameters:list):
+        new_path_list, output_path_list, weather_list, idf_name_list, parameter_type_list, parameter_name_list, value_name_list, value_list = self.complete_path_list(parameters)
+        for enum, new_path in enumerate(new_path_list):
+            project = idf_project(self.idd, self.idf_path, idf_name_list[enum], weather_list[enum])
+            idf, epw_path, idd_path = project.get_idf(idf_name_list[enum],weather_list[enum])
+            # transformation: --------------
+            object = idf.getobject(parameter_type_list[enum], parameter_name_list[enum])
+            object[value_name_list[enum]] = value_list[enum] # type: ignore
+            print(object)
+            # ------------------------------
+            idf.saveas(new_path)
+            idf.run(weather=epw_path,idd=idd_path,output_directory=output_path_list[enum])
+        return output_path_list, weather_list, idf_name_list, value_name_list, value_list
+
+    def complete_path_list(self,parameters:list):
+        new_path_list = []
+        output_path_list = []
+        weather_name_list = []
+        idf_name_list = []
+        parameter_type_list = []
+        parameter_name_list = []
+        value_name_list = []
+        value_list = []
         for parameter in parameters:
             for weather_name in self.epws:
                 idf_name, type, name, value_name, range_values = parameter
-                project = idf_project(self.idd,self.idf_path,idf_name,weather_name)
-                idf, epw_path, idd_path = project.get_idf(idf_name,weather_name)
-                object = idf.getobject(type,name)
-
                 for var in range_values:
-                    object[value_name] = var # type: ignore
-                    new_path_name, output_dir = self.save_as_parameter(idf_name,weather_name,value_name,var)
-                    idf.saveas(new_path_name)
-                    
-                    idf.run(weather=epw_path,idd=idd_path, output_directory=output_dir)
-                    self.files_output.append(output_dir)
-
-                    if self.debug:
-                        print(object)
-                        print(new_path_name)
-                        print(idf)
-                        print(epw_path,idd_path,output_dir)
-                        print(self.files_output)
-
-        return self.files_output
+                    new_path, output_dir = self.save_as_parameter(idf_name, weather_name, value_name, var)
+                    new_path_list.append(new_path)
+                    output_path_list.append(output_dir)
+                    weather_name_list.append(weather_name)
+                    idf_name_list.append(idf_name)
+                    parameter_type_list.append(type)
+                    parameter_name_list.append(name)
+                    value_name_list.append(value_name)
+                    value_list.append(var)
+        return new_path_list, output_path_list, weather_name_list, idf_name_list, parameter_type_list, parameter_name_list, value_name_list, value_list
             
-    def save_as_parameter(self, idf_name, weather, value_name, var):
+    def save_as_parameter(self, idf_name:str, weather:str, value_name:str, value):
             dir,_ = os.path.splitext(self.idf_path)
-            new_name = idf_name + "_" + weather + "_" + value_name + "_" + str(var)
+            new_name = idf_name + "_" + weather + "_" + value_name + "_" + str(value)
             new_path = dir + "/" + new_name + ".idf"
             output_dir = dir + '/output/' + new_name + '/'
             return new_path, output_dir
 
-    def get_data(self,output_list):
-        column_list = []
-        data_list = []
+    def get_geometry_info(self,output_dir):
+        sql_path = os.path.join(output_dir, "eplusout.sql")
+        if not os.path.exists(sql_path):
+            return None
         
-        for var in output_list:
+        conn = sqlite3.connect(sql_path)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT ZoneName, FloorArea, Volume FROM Zones;")
+        zones = cursor.fetchall()
+
+        conn.close()
+        return zones
+
+    def get_data(self,output_list,weather_name, idf_name,value_name, value):
+        all_simulations = []
+        
+        for enum,var in enumerate(output_list):
+            geometry_info = self.get_geometry_info(var)
+            print(geometry_info)
             foutname = os.path.join(var,"epluszsz.csv")
             result = pd.read_csv(foutname)
 
-            if self.debug:
-                print(foutname)
-                print(result)
+            result['weather'] = weather_name[enum]
+            result['file'] = idf_name[enum]
+            result[value_name[enum]] = value[enum]
 
-            columns = result.columns
-            data = result.iloc[1:]
-            column_list.append(columns)
-            data_list.append(data)
-        return column_list, data_list
+            all_simulations.append(result)
+        master_df = pd.concat(all_simulations, ignore_index=True)
+        return master_df
         

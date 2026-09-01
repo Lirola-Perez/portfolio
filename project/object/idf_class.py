@@ -19,9 +19,26 @@ class idf_project(IDF):
         print(self.idd)
         IDF.setiddname(idd_path)
         # 3. Load your IDF model
-        idf = IDF(idfname=idf_path, epw=epw_path)
+        self.idf = IDF(idfname=idf_path, epw=epw_path)
         print("IDF loaded successfully using eppy!")
-        return idf, epw_path, idd_path
+        return self.idf, epw_path, idd_path
+
+    def get_info_eppy(self):
+        zones = self.idf.idfobjects['ZONE']
+        for zone in zones:
+            print(f"Zone Name: {zone.Name}")
+            print(f"  - Ceiling Height: {zone.Ceiling_Height}")
+            print(f"  - Volume: {zone.Volume}")
+        surfaces = self.idf.idfobjects['BUILDINGSURFACE:DETAILED']
+        total_wall_area = 0.0
+        total_floor_area = 0.0
+        for surface in surfaces:
+            if surface.Surface_Type == 'Wall':
+                print(f"Wall: {surface.Name}, Area: {surface.Zone_Name}")
+
+        windows = self.idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
+        for win in windows:
+            print(f"Window: {win.Name}, Parent Surface: {win.Building_Surface_Name}")
             
     def get_results(self,file:str):
         self.out_path = os.path.join(self.projects, "output/")
