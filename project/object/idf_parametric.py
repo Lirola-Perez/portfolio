@@ -5,7 +5,7 @@ import os
 import pandas as pd
 
 class idf_parametric():
-    def __init__(self,idd_path, e_proj_folder, idf_names,epw_names):
+    def __init__(self,idd_path, e_proj_folder, idf_names, epw_names):
          self.idfs = idf_names
          self.epws = epw_names
          self.idd = idd_path
@@ -13,9 +13,12 @@ class idf_parametric():
 
     def parametrization(self,parameters:list):
         new_path_list, output_path_list, weather_list, idf_name_list, parameter_type_list, parameter_name_list, value_name_list, value_list = self.complete_path_list(parameters)
+        print(new_path_list)
         for enum, new_path in enumerate(new_path_list):
+            print(idf_name_list)
             project = idf_project(self.idd, self.idf_path, idf_name_list[enum], weather_list[enum])
             idf, epw_path, idd_path = project.get_idf()
+            idf = project.set_idf_info(idf,new_path)
             # transformation: --------------
             object = idf.getobject(parameter_type_list[enum], parameter_name_list[enum])
             object[value_name_list[enum]] = value_list[enum] # type: ignore
