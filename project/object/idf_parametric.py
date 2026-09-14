@@ -15,7 +15,7 @@ class idf_parametric():
         new_path_list, output_path_list, weather_list, idf_name_list, parameter_type_list, parameter_name_list, value_name_list, value_list = self.complete_path_list(parameters)
         for enum, new_path in enumerate(new_path_list):
             project = idf_project(self.idd, self.idf_path, idf_name_list[enum], weather_list[enum])
-            idf, epw_path, idd_path = project.get_idf(idf_name_list[enum],weather_list[enum])
+            idf, epw_path, idd_path = project.get_idf()
             # transformation: --------------
             object = idf.getobject(parameter_type_list[enum], parameter_name_list[enum])
             object[value_name_list[enum]] = value_list[enum] # type: ignore
@@ -56,34 +56,6 @@ class idf_parametric():
             output_dir = dir + '/output/' + new_name + '/'
             return new_path, output_dir
 
-    # def get_geometry_info(self,output_dir):
-    #     sql_path = os.path.join(output_dir, "eplusout.sql")
-    #     if not os.path.exists(sql_path):
-    #         return None
-        
-    #     conn = sqlite3.connect(sql_path)
-    #     cursor = conn.cursor()
+    
 
-    #     cursor.execute("SELECT ZoneName, FloorArea, Volume FROM Zones;")
-    #     zones = cursor.fetchall()
-
-    #     conn.close()
-    #     return zones
-
-    # def get_data(self,output_list,weather_name, idf_name,value_name, value):
-    #     all_simulations = []
-        
-    #     for enum,var in enumerate(output_list):
-    #         geometry_info = self.get_geometry_info(var)
-    #         print(geometry_info)
-    #         foutname = os.path.join(var,"epluszsz.csv")
-    #         result = pd.read_csv(foutname)
-
-    #         result['weather'] = weather_name[enum]
-    #         result['file'] = idf_name[enum]
-    #         result[value_name[enum]] = value[enum]
-
-    #         all_simulations.append(result)
-    #     master_df = pd.concat(all_simulations, ignore_index=True)
-    #     return master_df
         

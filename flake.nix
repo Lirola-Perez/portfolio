@@ -23,7 +23,11 @@
           python313Packages.numpy
           python313Packages.pandas
           python313Packages.tensorflow
+          python313Packages.ipykernel
+          python313Packages.jupyter
           vscode
+          pandoc
+          texliveMedium
         ];
 
         # Runs automatically the moment of typing 'nix develop'
