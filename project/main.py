@@ -40,9 +40,9 @@ def main():
         [idf_names[1], parameter_type[0], parameter_name[1], parameter_values[0][0], parameter_values[0][1:]]
         ]
     
-    output_path_list, weather_list, idf_name_list, value_name_list, value_list = projects.parametrization(parameter)
+    # output_path_list, weather_list, idf_name_list, value_name_list, value_list = projects.parametrization(parameter)
 
-    # new_path_list, output_path_list, weather_list, idf_name_list, parameter_type_list, parameter_name_list, value_name_list, value_list = projects.complete_path_list(parameter)
+    new_path_list, output_path_list, weather_list, idf_name_list, parameter_type_list, parameter_name_list, value_name_list, value_list = projects.complete_path_list(parameter)
 
     #print(output_path_list)
     data = DataProcess()

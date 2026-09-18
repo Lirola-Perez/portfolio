@@ -5,7 +5,6 @@ import numpy as np
 import sqlite3
 import os
 
-
 class DataProcess:
 
     def get_data(self,output_list,weather_name, idf_name, value_name, value):
@@ -13,38 +12,60 @@ class DataProcess:
         
         for enum,var in enumerate(output_list):
             #print(enum, var)
-            geometry_info = self.get_geometry_info(var)
-            #print(geometry_info)
+            geometry= self.get_geometry_info(var)
+            print(geometry)
             foutname = os.path.join(var,"epluszsz.csv")
             result = pd.read_csv(foutname)
             # Unifying names
             new_columns = self.name_unifier(result)
             result.columns = new_columns
+            
             # Keeping only time-related rows
             result = result[result['Time'].astype(str).str.contains(':', na=False)]
 
-            result['weather'] = weather_name[enum]
-            result['file'] = idf_name[enum]
+            result['Weather'] = weather_name[enum]
+            result['File'] = idf_name[enum]
             result[value_name[enum]] = value[enum]
 
-            # # SETTING THE DATA AS SINGLE MULTIDIMENSIONAL-DATAPOINTS
-            # # 2. Define your metadata tracking columns
-            # id_vars = ['Time', 'weather', 'file']
-            # value_vars = [col for col in result.columns if col not in id_vars]
-            # print(id_vars, value_vars)
-            # # 3. Melt the wide DataFrame into a long format
-            # long_result = result.melt(
-            #     id_vars=id_vars, 
-            #     value_vars=value_vars, 
-            #     var_name='Output_Variable', 
-            #     value_name='Value'
-            # )
+            # MELTING keeping the anchor columns Time, weather, file.
+            # melting all Zones variables and all values of those zones variables in one column.
+            id_vars = ['Time', 'Weather', 'File', value_name[enum]]
+            print(id_vars)
+            value_vars = [col for col in result.columns if col not in id_vars]
+            
+            long_result = result.melt(id_vars=id_vars, value_vars=value_vars, var_name='Zone_Variable', value_name='Value')
+            
+            split_cols = long_result['Zone_Variable'].str.split(':', n=1, expand=True)
+            print(split_cols)
+            # 2. Safety check: ensure we actually got 2 columns back
+            if split_cols.shape[1] < 2:
+                print(split_cols)
+                split_cols[1] = "General_Variable" # Fallback if a header lacks a colon
+            long_result['Zone'] = split_cols[0]
+            long_result['Variable'] = split_cols[1]
 
-            result.to_csv(os.path.join(var, 'epluszsz_mod.csv'), index=False)
+            # Ensure geometry is a valid dictionary (default to empty dict if None)
+            safe_geometry = geometry if geometry is not None else {}
 
-            result = result.set_index(['file', 'weather', value_name[enum], 'Time'])
+            long_result['Area'] = long_result['Zone'].map(
+                lambda z: safe_geometry.get(z, {}).get('Area', None)
+            )
 
-            all_simulations.append(result)
+            long_result['Volume'] = long_result['Zone'].map(
+                            lambda z: safe_geometry.get(z, {}).get('Volume', None)
+                        )
+
+            long_result = long_result.drop(columns=['Zone_Variable'])
+
+            pivoted = long_result.pivot_table(
+                index=['File', 'Weather','Zone', 'Area', 'Volume', 'Variable',value_name[enum]],
+                columns='Time', 
+                values='Value'
+                )
+
+            pivoted.to_csv(os.path.join(var, 'epluszsz_mod.csv'), index=False)
+
+            all_simulations.append(pivoted)
 
         master_df = pd.concat(all_simulations, axis=0)
 
@@ -67,12 +88,12 @@ class DataProcess:
             else:
                 zone = parts[0]
                 variable_and_units = ':'.join(parts[2:]) # handles any extra colons in variable names
-                new_columns.append(f"{zone}:{variable_and_units}")
+                new_columns.append(f'{zone}:{variable_and_units}')
 
         return new_columns
 
     def get_geometry_info(self,output_dir):
-        self.inspect_sqlite_schema(output_dir)
+        # self.inspect_sqlite_schema(output_dir)
         sql_path = self.get_sql_output_path(output_dir)
 
         if sql_path:
@@ -81,9 +102,12 @@ class DataProcess:
 
             cursor.execute("SELECT ZoneName, FloorArea, Volume FROM Zones;")
             zones = cursor.fetchall()
-
+            geo = dict()
+            for zone,area,volume in zones:
+                geo[zone]={'Area':area, 'Volume':volume}
             conn.close()
-            return zones
+
+            return geo
         else:
             print(f'failed to get geometry from eplusout.sql {output_dir}')
 
