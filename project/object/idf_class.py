@@ -17,7 +17,7 @@ class idf_project(IDF):
         # 3. Load your IDF model
         self.idf = IDF(idfname=idf_path, epw=epw_path)
         print("IDF loaded successfully using eppy!")
-        return self.idf, epw_path, idd_path
+        return self.idf
 
     def get_info_eppy(self):
         zones = self.idf.idfobjects['ZONE']
@@ -42,9 +42,9 @@ class idf_project(IDF):
         idd_path = os.path.join(self.idd, "Energy+.idd")
         return idd_path, idf_path, epw_path
 
-    def set_idf_info(self,idf,path):
-        # new_name = self.idf_name + '_mod'
-        # new_idf = os.path.join(self.projects, new_name + '.idf')
+    def set_idf_info(self,idf):
+        new_name = self.idf_name + '_mod'
+        new_idf_path = os.path.join(self.projects, new_name + '.idf')
         timestep = idf.idfobjects['Timestep'][0]
         if timestep.Number_of_Timesteps_per_Hour != 6:
             timestep.Number_of_Timesteps_per_Hour = 6
@@ -78,8 +78,8 @@ class idf_project(IDF):
             'Zone Air System Sensible Cooling Energy'
             ]
         self.output_object_generator(output_list)
-        idf.saveas(path)
-        return idf
+        idf.saveas(new_idf_path)
+        return idf, new_name
 
     def key_filter(self,word:str) -> list:
         key_filtered = []

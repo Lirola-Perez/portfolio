@@ -1,3 +1,4 @@
+from enum import unique
 from sre_compile import isstring
 
 import pandas as pd
@@ -7,92 +8,112 @@ import os
 
 class DataProcess:
 
-    def get_data(self,output_list,weather_name, idf_name, value_name, value):
+    def get_data(self,output_list,weather_name, idf_name, value_name, value, old_value_list):
         all_simulations = []
-        
+
+        compress_value_name = list(set(value_name))
+        compress_old_value = list(set(old_value_list))
+
         for enum,var in enumerate(output_list):
-            #print(enum, var)
-            geometry= self.get_geometry_info(var)
-            print(geometry)
+        
             foutname = os.path.join(var,"epluszsz.csv")
             result = pd.read_csv(foutname)
-            # Unifying names
-            new_columns = self.name_unifier(result)
-            result.columns = new_columns
-            
-            # Keeping only time-related rows
-            result = result[result['Time'].astype(str).str.contains(':', na=False)]
+
+            for param_name, default_val in zip(compress_value_name, compress_old_value):  # or your baseline values
+                if param_name not in result.columns:
+                    result[param_name] = (default_val)
 
             result['Weather'] = weather_name[enum]
             result['File'] = idf_name[enum]
             result[value_name[enum]] = value[enum]
+            #print(result[value_name[enum]], value[enum])
+
+            # Unifying names
+            result = self.name_unifier(result)
+            
+            # Keeping only time-related rows
+            result = result[result['Time'].astype(str).str.contains(':', na=False)]
+
+            # cleaning columns with only zeros
+            result = self.clean_columns(result)
 
             # MELTING keeping the anchor columns Time, weather, file.
             # melting all Zones variables and all values of those zones variables in one column.
-            id_vars = ['Time', 'Weather', 'File', value_name[enum]]
+            id_vars = ['Time', 'Weather', 'File']
+            for parameter_name in list(set(value_name)):
+                id_vars.append(parameter_name)
             print(id_vars)
+            #print(result.columns)
+            #print(result)
             value_vars = [col for col in result.columns if col not in id_vars]
-            
-            long_result = result.melt(id_vars=id_vars, value_vars=value_vars, var_name='Zone_Variable', value_name='Value')
-            
-            split_cols = long_result['Zone_Variable'].str.split(':', n=1, expand=True)
-            print(split_cols)
-            # 2. Safety check: ensure we actually got 2 columns back
-            if split_cols.shape[1] < 2:
-                print(split_cols)
-                split_cols[1] = "General_Variable" # Fallback if a header lacks a colon
-            long_result['Zone'] = split_cols[0]
-            long_result['Variable'] = split_cols[1]
 
-            # Ensure geometry is a valid dictionary (default to empty dict if None)
-            safe_geometry = geometry if geometry is not None else {}
+            column_variable = 'Zone_Variable'
+            column_values = 'Value'
+            long_result = result.melt(id_vars=id_vars, 
+                                      value_vars=value_vars, 
+                                      var_name=column_variable, 
+                                      value_name=column_values)
+
+            long_result = self.split_columns(long_result,column_variable,':','Zone','Variable')
+
+            geometry= self.get_general_geometry(var)
+            # print(geometry)
 
             long_result['Area'] = long_result['Zone'].map(
-                lambda z: safe_geometry.get(z, {}).get('Area', None)
-            )
+                lambda z: geometry.get(z, {}).get('Area', None) # type: ignore
+                )
 
             long_result['Volume'] = long_result['Zone'].map(
-                            lambda z: safe_geometry.get(z, {}).get('Volume', None)
-                        )
+                lambda z: geometry.get(z, {}).get('Volume', None) # type: ignore
+                )
 
             long_result = long_result.drop(columns=['Zone_Variable'])
 
+            id_vars.append('Area')
+            id_vars.append('Volume')
+            id_vars.append('Zone')
+            id_vars.append('Variable')
+            value_n = list(set(value_name))
+            index_list = ['File', 'Weather','Zone', 'Area', 'Volume', 'Variable'] + value_n
+            print(index_list)
             pivoted = long_result.pivot_table(
-                index=['File', 'Weather','Zone', 'Area', 'Volume', 'Variable',value_name[enum]],
+                index=index_list,
                 columns='Time', 
                 values='Value'
                 )
 
-            pivoted.to_csv(os.path.join(var, 'epluszsz_mod.csv'), index=False)
+            reset_pivoted = pivoted.reset_index()
 
-            all_simulations.append(pivoted)
+            reset_pivoted.to_csv(os.path.join(var, 'epluszsz_mod.csv'), index=False)
+
+            all_simulations.append(reset_pivoted)
 
         master_df = pd.concat(all_simulations, axis=0)
 
         return master_df
 
-    def name_unifier(self,result):
-        new_columns = []
-        for col in result.columns:
+    def name_unifier(self,data):
+        column_name_clean = []
+        for col in data.columns:
             parts = col.split(':')
             # 1. Skip non-output columns like 'Time', 'weather', 'file', etc.
             if len(parts) <= 1:
-                new_columns.append(col)
+                column_name_clean.append(col)
                 
             # 2. Global/Site variables (e.g., "Environment:Site Outdoor Air... [C]")
             elif len(parts) == 2:
                 # parts[0] is the environment name, parts[1] is the variable
-                new_columns.append(parts[1])
+                column_name_clean.append(parts[1])
 
             # If it matches the Zone:Environment:Variable structure (3+ parts)
             else:
                 zone = parts[0]
                 variable_and_units = ':'.join(parts[2:]) # handles any extra colons in variable names
-                new_columns.append(f'{zone}:{variable_and_units}')
+                column_name_clean.append(f'{zone}:{variable_and_units}')
+        data.columns = column_name_clean
+        return data
 
-        return new_columns
-
-    def get_geometry_info(self,output_dir):
+    def get_general_geometry(self,output_dir):
         # self.inspect_sqlite_schema(output_dir)
         sql_path = self.get_sql_output_path(output_dir)
 
@@ -107,7 +128,10 @@ class DataProcess:
                 geo[zone]={'Area':area, 'Volume':volume}
             conn.close()
 
-            return geo
+            # Ensure geometry is a valid dictionary (default to empty dict if None)
+            geometry = geo if geo is not None else {}
+
+            return geometry
         else:
             print(f'failed to get geometry from eplusout.sql {output_dir}')
 
@@ -142,3 +166,17 @@ class DataProcess:
             print("SQLite file not found. Run a simulation first!")
             return None
         return sql_path
+
+    def clean_columns(self,data):
+        zero_cols = data.columns[(data == 0).all(axis=0)]
+        return data.drop(columns=zero_cols)
+
+    def split_columns(self,data,variable:str,symbol:str,name_1:str,name_2:str):
+        split_cols = data[variable].str.split(symbol, n=1, expand=True)
+        # 2. Safety check: ensure we actually got 2 columns back
+        if split_cols.shape[1] < 2:
+            split_cols[1] = "General_Variable" # Fallback if a header lacks a colon
+        data[name_1] = split_cols[0]
+        data[name_2] = split_cols[1]
+
+        return data

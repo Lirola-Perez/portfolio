@@ -25,6 +25,7 @@
           python313Packages.tensorflow
           python313Packages.ipykernel
           python313Packages.jupyter
+          python313Packages.scikit-learn
           vscode
           pandoc
           texliveMedium
