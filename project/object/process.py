@@ -68,9 +68,10 @@ class DataProcess:
             # melting all Zones variables and all values of those zones variables in one column.
             id_vars = ['Time', 'Weather', 'File']
             for parameter_name in all_properties:
-                id_vars.append(parameter_name)
+                if parameter_name not in id_vars:
+                    id_vars.append(parameter_name)
             print(id_vars)
-            #print(result.columns)
+            print(result.columns)
             value_vars = [col for col in result.columns if col not in id_vars]
 
             column_variable = 'Zone_Variable'
@@ -99,7 +100,9 @@ class DataProcess:
             id_vars.append('Volume')
             id_vars.append('Zone')
             id_vars.append('Variable')
+            index_list = []
             index_list = ['File', 'Weather','Zone', 'Area', 'Volume', 'Variable'] + all_properties
+            index_list = list(set(index_list))
             print(index_list)
             pivoted = long_result.pivot_table(
                 index=index_list,
