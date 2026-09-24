@@ -8,19 +8,31 @@ import pandas as pd
 from pathlib import Path
 import json
 
-class IdfParametric():
-    def __init__(self,root, idf_names, epw_names):
-        self.root = root
-        self.idfs = idf_names
-        self.epws = epw_names
-        self.output = self.root +"/output"
+class IdfParametric:
+    def __init__(self,parameters):
+        script_dir = Path(__file__).parent
+        json_file_path = str(script_dir) + "/" + str(parameters)
 
-    def parametrization(self,parameters:list):
+        with open(json_file_path + ".json", "r") as f:
+            self.parameters = json.load(f)
+        self.epws = self.parameters["weather_names"]
+        self.root = self.parameters["root_path"]
+        self.output = self.root + "/output"
+        self.all_properties = [simulation["property"] for simulation in self.parameters["simulations"]]
+
+    def parametrization(self):
+
+        simulations = self.parameters["simulations"]
 
         for weather in self.epws:
-            for parameter in parameters:
-                idf_name, type, name, property, values = parameter
+            for parameters in simulations:
 
+                idf_name = parameters["idf_file"]
+                type = parameters["type"]
+                name = parameters["type_name"]
+                property = parameters["property"]
+                values = parameters["property_value"]
+                
                 for val in values:
 
                     project = IdfProject(self.root, idf_name, weather)
@@ -31,11 +43,12 @@ class IdfParametric():
 
                     run_metadata = {
                         "idf_name": idf_name,
+                        "weather": weather,
                         "parameter_type": type,
                         "parameter_name": name,
                         "property_name": property,
                         "value": val,
-                        "old_value": 0,
+                        "all_properties": self.all_properties,
                         "output": str(run_folder)
                     }
                     
@@ -46,8 +59,12 @@ class IdfParametric():
                     # transformation: --------------
                     print(type, name)
                     object = idf.getobject(type, name)
-                    old_value = object[property] # type: ignore
-                    run_metadata["old_value"] = old_value
+                    old = []
+                    for property in self.all_properties:
+                        old_value = object[property] # type: ignore
+                        old.append(old_value)
+
+                    run_metadata["old_values"] = old
                     # new value:
                     object[property] = val # type: ignore
                     print(object)
@@ -60,22 +77,22 @@ class IdfParametric():
                     idf.saveas(new_path)
 
     def run_all(self):
-        outputs = self.output_pattern_reader("*_mod.idf")
+        outputs = self.output_pattern_reader("*_mod.idf",self.output)
         print(outputs)
         for weather in self.epws:
-            for folder_name, file_name in outputs:
-                print(folder_name)
+            for folder_path, file_name in outputs:
+                print(folder_path)
                 project = IdfProject(self.root, file_name, weather)
-                idf = project.get_idf(folder_name)
-                idd, idf_path, epw = project.get_paths(folder_name)
+                idf = project.get_idf(folder_path)
+                idd, idf_path, epw = project.get_paths(folder_path)
                 print(idd,idf,epw)
                 #epw_path = os.path.join(self.weather_path, weather + ".epw")
-                idf.run(weather=epw,idd=idd,output_directory=folder_name)
+                idf.run(weather=epw,idd=idd,output_directory=folder_path)
 
 
-    def output_pattern_reader(self,pattern:str) -> list[list]:
+    def output_pattern_reader(self,pattern:str,output:str) -> list[list]:
         output_data = []
-        output_dir = Path(self.output)
+        output_dir = Path(output)
         if output_dir.exists():
             for sub_dir in output_dir.iterdir():
                 if sub_dir.is_dir():
@@ -85,63 +102,4 @@ class IdfParametric():
                     print(mod_files)
                     if mod_files:
                         output_data.append((sub_dir, mod_file))
-        return output_data
-
-                
-        # new_path_list, output_path_list, weather_list, idf_name_list, parameter_type_list, parameter_name_list, value_name_list, value_list, old_value_list = self.complete_path_list(parameters)
-        # print(new_path_list)
-        # print(old_value_list)
-        # for enum, new_path in enumerate(new_path_list):
-        #     print(idf_name_list)
-        #     project = idf_project(self.idd, self.idf_path, idf_name_list[enum], weather_list[enum])
-        #     idf, epw_path, idd_path = project.get_idf()
-        #     idf = project.set_idf_info(idf,new_path)
-        #     # transformation: --------------
-        #     object = idf.getobject(parameter_type_list[enum], parameter_name_list[enum])
-        #     old_value_list[enum] = object[value_name_list[enum]] # type: ignore
-        #     #print(old_value_list)
-        #     object[value_name_list[enum]] = value_list[enum] # type: ignore
-        #     #print(object)
-        #     #print(old_value_list)
-        #     # ------------------------------
-        #     idf.saveas(new_path)
-        #     idf.run(weather=epw_path,idd=idd_path,output_directory=output_path_list[enum])
-
-        # return output_path_list, weather_list, idf_name_list, value_name_list, value_list, old_value_list
-
-    # def complete_path_list(self,parameters:list):
-    #     new_path_list = []
-    #     output_path_list = []
-    #     weather_name_list = []
-    #     idf_name_list = []
-    #     parameter_type_list = []
-    #     parameter_name_list = []
-    #     value_name_list = []
-    #     value_list = []
-    #     old_value_list = []
-    #     for parameter in parameters:
-    #         for weather_name in self.epws:
-    #             idf_name, type, name, property, values = parameter
-    #             for var in values:
-    #                 new_path, output_dir = self.save_as_parameter(idf_name, weather_name, property, var)
-    #                 new_path_list.append(new_path)
-    #                 output_path_list.append(output_dir)
-    #                 weather_name_list.append(weather_name)
-    #                 idf_name_list.append(idf_name)
-    #                 parameter_type_list.append(type)
-    #                 parameter_name_list.append(name)
-    #                 value_name_list.append(property)
-    #                 value_list.append(var)
-    #                 old_value_list.append(999)
-    #     return new_path_list, output_path_list, weather_name_list, idf_name_list, parameter_type_list, parameter_name_list, value_name_list, value_list, old_value_list
-            
-    # def save_as_parameter(self, idf_name:str, weather:str, property:str, value):
-    #         dir,_ = os.path.splitext(self.idf_path)
-    #         new_name = idf_name + "_" + weather + "_" + property + "_" + str(value)
-    #         new_path = dir + "/" + new_name + ".idf"
-    #         output_dir = dir + '/output/' + new_name + '/'
-    #         return new_path, output_dir
-
-    
-
-        
+        return output_data  

@@ -1,34 +1,60 @@
 from enum import unique
+import enum
 from sre_compile import isstring
-from .idf_parametric import IdfParametric as param
+from xml.sax.handler import all_properties
+from .idf_parametric import IdfParametric
 
 import pandas as pd
 import numpy as np
+from pathlib import Path
 import sqlite3
 import os
+import json
 
 class DataProcess:
+    def __init__(self,parameters):
+        self.parameters = parameters
+        script_dir = Path(__file__).parent
+        json_file_path = str(script_dir) + "/" + str(parameters)
 
-    def get_data(self,output_list,weather_name, idf_name, value_name, value, old_value_list):
+        with open(json_file_path + ".json", "r") as f:
+            parameter_run = json.load(f)
+
+        self.epws = parameter_run["weather_names"]
+        self.root = parameter_run["root_path"]
+        self.output = self.root + "/output"
+
+    def get_data(self):
         all_simulations = []
 
-        compress_value_name = list(set(value_name))
-        compress_old_value = list(set(old_value_list))
+        param = IdfParametric(self.parameters)
+        output_data = param.output_pattern_reader(pattern="*zsz.csv",output=self.output)
 
-        for enum,var in enumerate(output_list):
+        for folder_path,file_name in output_data:
+            print(folder_path)
+            with open(folder_path / "parameter.json", "r") as f:
+                parameters = json.load(f)
+
+            idf_name = parameters["idf_name"]
+            weather = parameters["weather"]
+            property_name = parameters["property_name"]
+            value = parameters["value"]
+            old_value = parameters["old_values"]
+            all_properties = parameters["all_properties"]
         
-            foutname = os.path.join(var,"epluszsz.csv")
+            foutname = os.path.join(folder_path,"epluszsz.csv")
             result = pd.read_csv(foutname)
 
-            for param_name, default_val in zip(compress_value_name, compress_old_value):  # or your baseline values
-                if param_name not in result.columns:
-                    result[param_name] = (default_val)
+            result['Weather'] = weather
+            result['File'] = idf_name
+            result[property_name] = value
+            print(property_name)
 
-            result['Weather'] = weather_name[enum]
-            result['File'] = idf_name[enum]
-            result[value_name[enum]] = value[enum]
-            #print(result[value_name[enum]], value[enum])
-
+            for enum,property in enumerate(all_properties):
+                if property != property_name:
+                    print(property)
+                    result[property] = old_value[enum]
+            #print(result)
             # Unifying names
             result = self.name_unifier(result)
             
@@ -41,11 +67,10 @@ class DataProcess:
             # MELTING keeping the anchor columns Time, weather, file.
             # melting all Zones variables and all values of those zones variables in one column.
             id_vars = ['Time', 'Weather', 'File']
-            for parameter_name in list(set(value_name)):
+            for parameter_name in all_properties:
                 id_vars.append(parameter_name)
             print(id_vars)
             #print(result.columns)
-            #print(result)
             value_vars = [col for col in result.columns if col not in id_vars]
 
             column_variable = 'Zone_Variable'
@@ -57,7 +82,7 @@ class DataProcess:
 
             long_result = self.split_columns(long_result,column_variable,':','Zone','Variable')
 
-            geometry= self.get_general_geometry(var)
+            geometry= self.get_general_geometry(folder_path)
             # print(geometry)
 
             long_result['Area'] = long_result['Zone'].map(
@@ -74,8 +99,7 @@ class DataProcess:
             id_vars.append('Volume')
             id_vars.append('Zone')
             id_vars.append('Variable')
-            value_n = list(set(value_name))
-            index_list = ['File', 'Weather','Zone', 'Area', 'Volume', 'Variable'] + value_n
+            index_list = ['File', 'Weather','Zone', 'Area', 'Volume', 'Variable'] + all_properties
             print(index_list)
             pivoted = long_result.pivot_table(
                 index=index_list,
@@ -85,7 +109,7 @@ class DataProcess:
 
             reset_pivoted = pivoted.reset_index()
 
-            reset_pivoted.to_csv(os.path.join(var, 'epluszsz_mod.csv'), index=False)
+            reset_pivoted.to_csv(os.path.join(folder_path, 'epluszsz_mod.csv'), index=False)
 
             all_simulations.append(reset_pivoted)
 
