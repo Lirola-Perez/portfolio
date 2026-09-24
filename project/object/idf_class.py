@@ -1,16 +1,18 @@
+from zipfile import Path
+
 from eppy.modeleditor import IDF
 import os
 
-class idf_project(IDF):
-    def __init__(self,e_path:str,e_idf_folder:str,idf_name:str,epw_name:str):
+class IdfProject(IDF):
+    def __init__(self,root, idf_name:str,epw_name:str):
         super().__init__()
-        self.idd = e_path
-        self.projects = e_idf_folder
+        self.root = root
         self.idf_name = idf_name
         self.epw_name = epw_name
+        self.project_folder = self.root + "/project/Eplusfiles"
 
-    def get_idf(self):
-        idd_path, idf_path, epw_path = self.get_paths()
+    def get_idf(self,path):
+        idd_path, idf_path, epw_path = self.get_paths(path)
         # 2. Set the IDD version so eppy knows how to parse it
         print(f' IDD: {idd_path} \n IDF: {idf_path} \n EPW: {epw_path} ')
         IDF.setiddname(idd_path)
@@ -36,15 +38,20 @@ class idf_project(IDF):
         for win in windows:
             print(f"Window: {win.Name}, Parent Surface: {win.Building_Surface_Name}")
 
-    def get_paths(self):
-        idf_path = os.path.join(self.projects, self.idf_name + '.idf')
-        epw_path = os.path.join(self.projects, "weather/", self.epw_name + ".epw")
-        idd_path = os.path.join(self.idd, "Energy+.idd")
+    def get_paths(self,path="default"):
+        if path == "default":
+            path_final = self.project_folder
+        else:
+            path_final = path
+        idf_path = os.path.join(path_final, self.idf_name + '.idf')
+        epw_path = os.path.join(self.project_folder, "weather", self.epw_name + ".epw")
+        idd_path = os.path.join(self.root,"energyplus", "Energy+.idd")
         return idd_path, idf_path, epw_path
 
-    def set_idf_info(self,idf):
-        new_name = self.idf_name + '_mod'
-        new_idf_path = os.path.join(self.projects, new_name + '.idf')
+    def set_idf_info(self,idf,path):
+        # new_name = self.idf_name + '_mod'
+        new_name = self.get_new_idf_name()
+        new_idf_path = os.path.join(path, new_name + '.idf')
         timestep = idf.idfobjects['Timestep'][0]
         if timestep.Number_of_Timesteps_per_Hour != 6:
             timestep.Number_of_Timesteps_per_Hour = 6
@@ -79,7 +86,7 @@ class idf_project(IDF):
             ]
         self.output_object_generator(output_list)
         idf.saveas(new_idf_path)
-        return idf, new_name
+        return idf
 
     def key_filter(self,word:str) -> list:
         key_filtered = []
@@ -98,5 +105,5 @@ class idf_project(IDF):
         for item in output_list:
             self.idf.newidfobject('OUTPUT:VARIABLE',Key_Value='*',Variable_Name=item,Reporting_Frequency='Timestep')
 
-    def new_idf_name(self):
+    def get_new_idf_name(self):
         return self.idf_name + '_mod'

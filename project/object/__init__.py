@@ -1,2 +1,2 @@
-from .idf_class import idf_project
-from .idf_parametric import idf_parametric
+from .idf_class import IdfProject
+from .idf_parametric import IdfParametric

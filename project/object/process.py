@@ -1,5 +1,6 @@
 from enum import unique
 from sre_compile import isstring
+from .idf_parametric import IdfParametric as param
 
 import pandas as pd
 import numpy as np

@@ -1,6 +1,6 @@
 from textwrap import indent
 
-from .idf_class import idf_project
+from .idf_class import IdfProject
 from eppy.modeleditor import IDF
 import sqlite3
 import os
@@ -8,13 +8,12 @@ import pandas as pd
 from pathlib import Path
 import json
 
-class idf_parametric():
-    def __init__(self,idd_path, e_proj_folder, e_weather_folder, idf_names, epw_names):
-         self.idfs = idf_names
-         self.epws = epw_names
-         self.idd = idd_path
-         self.idf_path = e_proj_folder
-         self.weather_path = e_weather_folder
+class IdfParametric():
+    def __init__(self,root, idf_names, epw_names):
+        self.root = root
+        self.idfs = idf_names
+        self.epws = epw_names
+        self.output = self.root +"/output"
 
     def parametrization(self,parameters:list):
 
@@ -23,7 +22,11 @@ class idf_parametric():
                 idf_name, type, name, property, values = parameter
 
                 for val in values:
-                    run_folder = Path(f"{self.idf_path}/output/{idf_name}_{weather}_{property}_{val}")
+
+                    project = IdfProject(self.root, idf_name, weather)
+                    idf = project.get_idf(path="default")
+
+                    run_folder = Path(f"{self.output}/{idf_name}_{weather}_{property}_{val}")
                     run_folder.mkdir(parents=True, exist_ok=True)
 
                     run_metadata = {
@@ -35,20 +38,20 @@ class idf_parametric():
                         "old_value": 0,
                         "output": str(run_folder)
                     }
-
-                    project = idf_project(self.idd, self.idf_path, idf_name, weather)
-                    idf = project.get_idf()
-                    idf, new_idf_name = project.set_idf_info(idf)
+                    
+                    idf = project.set_idf_info(idf,run_folder)
+                    new_idf_name = project.get_new_idf_name()
                     run_metadata["modified_idf_name"] = new_idf_name
 
                     # transformation: --------------
                     print(type, name)
                     object = idf.getobject(type, name)
-                    print(object)
                     old_value = object[property] # type: ignore
                     run_metadata["old_value"] = old_value
                     # new value:
                     object[property] = val # type: ignore
+                    print(object)
+                    print(run_metadata)
 
                     with open(run_folder / "parameter.json", "w") as f:
                         json.dump(run_metadata, f, indent=4)
@@ -57,28 +60,32 @@ class idf_parametric():
                     idf.saveas(new_path)
 
     def run_all(self):
-        outputs = self.read_idf_folder()
+        outputs = self.output_pattern_reader("*_mod.idf")
+        print(outputs)
         for weather in self.epws:
             for folder_name, file_name in outputs:
-                project = idf_project(self.idd, folder_name, file_name, weather)
-                idf = project.get_idf()
-                idd_path, _, _ = project.get_paths()
-                epw_path = os.path.join(self.weather_path, weather + ".epw")
-                idf.run(weather=epw_path,idd=idd_path,output_directory=folder_name)
-                    
-    def read_idf_folder(self):
-        run_folders = []
-        output_dir = Path(f"{self.idf_path}/output/")
+                print(folder_name)
+                project = IdfProject(self.root, file_name, weather)
+                idf = project.get_idf(folder_name)
+                idd, idf_path, epw = project.get_paths(folder_name)
+                print(idd,idf,epw)
+                #epw_path = os.path.join(self.weather_path, weather + ".epw")
+                idf.run(weather=epw,idd=idd,output_directory=folder_name)
+
+
+    def output_pattern_reader(self,pattern:str) -> list[list]:
+        output_data = []
+        output_dir = Path(self.output)
         if output_dir.exists():
             for sub_dir in output_dir.iterdir():
                 if sub_dir.is_dir():
                     # if this folder has a _mod.idf file inside it
-                    mod_files = list(sub_dir.glob("*_mod.idf"))
+                    mod_files = list(sub_dir.glob(pattern))
                     mod_file = mod_files[0].stem
                     print(mod_files)
                     if mod_files:
-                        run_folders.append((sub_dir, mod_file))
-        return run_folders
+                        output_data.append((sub_dir, mod_file))
+        return output_data
 
                 
         # new_path_list, output_path_list, weather_list, idf_name_list, parameter_type_list, parameter_name_list, value_name_list, value_list, old_value_list = self.complete_path_list(parameters)

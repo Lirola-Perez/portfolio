@@ -1,13 +1,12 @@
 # %%
-from object.idf_class import idf_project
-from object.idf_parametric import idf_parametric
+from object.idf_class import IdfProject
+from object.idf_parametric import IdfParametric
 from object.process import DataProcess
 from nn.data_preparation import Input
 
 # 1. Define paths to your local EnergyPlus installation
-e_idd_path = "/home/lirola/PROJECT/PORTFOLIO/energyplus"
-e_idf_folder = "/home/lirola/PROJECT/PORTFOLIO/project/Eplusfiles"
-e_weather_folder = "/home/lirola/PROJECT/PORTFOLIO/project/Eplusfiles/weather"
+e_root_path = "/home/lirola/PROJECT/PORTFOLIO"
+
 idf_names_original = [
     'MultiStory',
     'LBuilding-G000'
@@ -22,7 +21,7 @@ def main():
     for idf_file in idf_names_original:
         idf_names.append(idf_file)
 
-    projects = idf_parametric(e_idd_path, e_idf_folder, e_weather_folder, idf_names, epw_names)
+    projects = IdfParametric(e_root_path, idf_names, epw_names)
     
     parameter_type = ['Material']
     parameter_name = [

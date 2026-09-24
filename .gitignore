@@ -59,4 +59,5 @@ energyplus/
 simulation_runs/
 Eplusfiles/
 theory/
+output/
 *.err
