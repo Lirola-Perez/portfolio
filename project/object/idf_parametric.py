@@ -18,7 +18,7 @@ class IdfParametric:
         self.epws = self.parameters["weather_names"]
         self.root = self.parameters["root_path"]
         self.output = self.root + "/output"
-        self.all_properties = [simulation["property"] for simulation in self.parameters["simulations"]]
+        self.all_properties = list(set([simulation["property"] for simulation in self.parameters["simulations"]]))
 
     def parametrization(self):
 

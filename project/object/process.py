@@ -96,13 +96,14 @@ class DataProcess:
 
             long_result = long_result.drop(columns=['Zone_Variable'])
 
-            id_vars.append('Area')
-            id_vars.append('Volume')
+            
             id_vars.append('Zone')
             id_vars.append('Variable')
+            id_vars.append('Area')
+            id_vars.append('Volume')
             index_list = []
-            index_list = ['File', 'Weather','Zone', 'Area', 'Volume', 'Variable'] + all_properties
-            index_list = list(set(index_list))
+            index_list = ['File', 'Zone', 'Variable', 'Weather', 'Area', 'Volume' ] + all_properties
+            #index_list = list(set(index_list))
             print(index_list)
             pivoted = long_result.pivot_table(
                 index=index_list,
