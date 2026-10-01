@@ -28,7 +28,7 @@ class DataProcess:
         all_simulations = []
 
         param = IdfParametric(self.parameters)
-        output_data = param.output_pattern_reader(pattern="*zsz.csv",output=self.output)
+        output_data = param.output_pattern_reader(pattern="*zsz.csv", output=self.output)
 
         for folder_path,file_name in output_data:
             print(folder_path)
@@ -71,7 +71,7 @@ class DataProcess:
                 if parameter_name not in id_vars:
                     id_vars.append(parameter_name)
             print(id_vars)
-            print(result.columns)
+            #print(result.columns)
             value_vars = [col for col in result.columns if col not in id_vars]
 
             column_variable = 'Zone_Variable'

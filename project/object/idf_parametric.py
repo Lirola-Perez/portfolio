@@ -21,7 +21,8 @@ class IdfParametric:
         self.all_properties = list(set([simulation["property"] for simulation in self.parameters["simulations"]]))
 
     def parametrization(self):
-
+        # Function to add/change the files with new parameters and 
+        # create new directories and files.
         simulations = self.parameters["simulations"]
 
         for weather in self.epws:
@@ -98,8 +99,9 @@ class IdfParametric:
                 if sub_dir.is_dir():
                     # if this folder has a _mod.idf file inside it
                     mod_files = list(sub_dir.glob(pattern))
-                    mod_file = mod_files[0].stem
                     print(mod_files)
                     if mod_files:
+                        mod_file = mod_files[0].stem
                         output_data.append((sub_dir, mod_file))
+                        
         return output_data  
