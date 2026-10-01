@@ -4,6 +4,11 @@
   # Defines the package source channel we pull from (NixOS unstable)
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+  nixConfig = {
+    max-jobs = 3;
+    cores = 4;
+  };
+
   outputs = { self, nixpkgs }: 
     let
       # Defining the system variable
@@ -15,17 +20,34 @@
         config.allowUnfree = true;
       };
 
+      myPython = pkgs.python313.withPackages (ps: with ps; [
+        pydantic
+        black
+        pandas
+        numpy
+        matplotlib
+        scikit-learn
+        uv
+        # mlxtend contains the keras modules
+        (mlxtend.overridePythonAttrs (old: {
+          doCheck = false; # Check deactivated for avoiding numerical errors
+        }))
+        seaborn
+        tensorflow
+        ipython
+        ipywidgets
+        jupyterlab
+        pytest
+        nltk
+      ]);
+
     in {
+      
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = with pkgs; [
           git
-          python313
-          python313Packages.numpy
-          python313Packages.pandas
-          python313Packages.tensorflow
-          python313Packages.ipykernel
-          python313Packages.jupyter
-          python313Packages.scikit-learn
+          direnv
+          myPython
           vscode
           pandoc
           texliveMedium
@@ -38,8 +60,22 @@
           # export PATH="/home/lirola/PROJECT/PORTFOLIO/energyplus:$PATH"
           #echo "--- Initializing Holistic Environment ---"
           echo "--- Clean Nix-LD Environment Initialized ---"
+          echo "--- WARNING: If python version changes -> delete .venv folder before entering environment ---"
+          if [ ! -d ".venv" ] || [ ! -f ".venv/bin/python" ]; then
+            echo "--- Setting up clean virtual environment with Python 3.13 ---"
+            #########################################################################################
+            # ATTENTION!: if you install sth with pip -> use first rm -rf .venv to "reload" this part.
+            #########################################################################################
+            rm -rf .venv
+            ${myPython}/bin/python -m venv --system-site-packages .venv
+            .venv/bin/pip install --upgrade pip
+            # Install Jupyter server tools specifically inside the venv to satisfy VS Code's requirements
+            #.venv/bin/pip install jupyter jupyterlab ipykernel keras dvc 
+            #.venv/bin/pip install tensorflow-datasets tfds-nightly 
+            # Register the kernel globally for user-space discovery in IDEs like VS Code
+            #.venv/bin/python -m ipykernel install --user --name=ml-course --display-name "Python (ML Course)"
+          fi
           echo "Tip: Activate your python environment 'source .venv/bin/activate'"
-          #echo "Tip: Type 'env-energyplus' to drop inside the FHS binary execution sandbox."
         '';
       };
     };
