@@ -3,7 +3,9 @@ from zipfile import Path
 from eppy.modeleditor import IDF
 import os
 
-class IdfProject(IDF):
+from numpy import isin
+
+class IdfClass(IDF):
     def __init__(self,root, idf_name:str,epw_name:str):
         super().__init__()
         self.root = root
@@ -21,23 +23,6 @@ class IdfProject(IDF):
         print("IDF loaded successfully using eppy!")
         return self.idf
 
-    def get_info_eppy(self):
-        zones = self.idf.idfobjects['ZONE']
-        for zone in zones:
-            print(f"Zone Name: {zone.Name}")
-            print(f"  - Ceiling Height: {zone.Ceiling_Height}")
-            print(f"  - Volume: {zone.Volume}")
-        surfaces = self.idf.idfobjects['BUILDINGSURFACE:DETAILED']
-        total_wall_area = 0.0
-        total_floor_area = 0.0
-        for surface in surfaces:
-            if surface.Surface_Type == 'Wall':
-                print(f"Wall: {surface.Name}, Area: {surface.Zone_Name}")
-
-        windows = self.idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
-        for win in windows:
-            print(f"Window: {win.Name}, Parent Surface: {win.Building_Surface_Name}")
-
     def get_paths(self,path="default"):
         if path == "default":
             path_final = self.project_folder
@@ -47,6 +32,53 @@ class IdfProject(IDF):
         epw_path = os.path.join(self.project_folder, "weather", self.epw_name + ".epw")
         idd_path = os.path.join(self.root,"energyplus", "Energy+.idd")
         return idd_path, idf_path, epw_path
+
+    def set_search(self, type:str, property:str | list):
+        self.current_type = type
+        self.current_property = property
+        self.objects = self.get_type_()
+
+    def get_type_(self):
+        return self.idf.idfobjects[self.current_type]
+    
+    def get_type_property_(self):
+        values = []
+        for obj in self.objects:
+            if isinstance(self.current_property,list):
+                value = [getattr(obj, p, None) for p in self.current_property]
+                values.append(value)
+            else:
+                values.append(getattr(obj, self.current_property, None))
+        return values
+
+    def assign_to_idf(self,val):
+        for obj in self.objects:
+            if isinstance(self.current_property,str) and isinstance(val,str | int):
+                setattr(obj,self.current_property, val)
+            elif isinstance(self.current_property, list) and isinstance(val,list):
+                for num,p in enumerate(self.current_property):
+                    setattr(obj,p,val[num])
+        return self.idf
+
+
+    # def get_info_eppy(self):
+    #     zones = self.idf.idfobjects['ZONE']
+    #     for zone in zones:
+    #         print(f"Zone Name: {zone.Name}")
+    #         print(f"  - Ceiling Height: {zone.Ceiling_Height}")
+    #         print(f"  - Volume: {zone.Volume}")
+    #     surfaces = self.idf.idfobjects['BUILDINGSURFACE:DETAILED']
+    #     total_wall_area = 0.0
+    #     total_floor_area = 0.0
+    #     for surface in surfaces:
+    #         if surface.Surface_Type == 'Wall':
+    #             print(f"Wall: {surface.Name}, Area: {surface.Zone_Name}")
+
+    #     windows = self.idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
+    #     for win in windows:
+    #         print(f"Window: {win.Name}, Parent Surface: {win.Building_Surface_Name}")
+
+    
 
     def set_idf_info(self,idf,path):
         # new_name = self.idf_name + '_mod'

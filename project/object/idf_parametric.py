@@ -1,6 +1,6 @@
 from textwrap import indent
 
-from .idf_class import IdfProject
+from .idf_class import IdfClass
 from eppy.modeleditor import IDF
 import sqlite3
 import os
@@ -36,7 +36,7 @@ class IdfParametric:
                 
                 for val in values:
 
-                    project = IdfProject(self.root, idf_name, weather)
+                    project = IdfClass(self.root, idf_name, weather)
                     idf = project.get_idf(path="default")
 
                     run_folder = Path(f"{self.output}/{idf_name}_{weather}_{property}_{val}")
@@ -83,7 +83,7 @@ class IdfParametric:
         for weather in self.epws:
             for folder_path, file_name in outputs:
                 print(folder_path)
-                project = IdfProject(self.root, file_name, weather)
+                project = IdfClass(self.root, file_name, weather)
                 idf = project.get_idf(folder_path)
                 idd, idf_path, epw = project.get_paths(folder_path)
                 print(idd,idf,epw)
