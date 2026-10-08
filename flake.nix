@@ -39,6 +39,29 @@
         jupyterlab
         pytest
         nltk
+
+        (ps.buildPythonPackage rec {
+          pname = "eppy";
+          version = "0.5.68";
+          src = ps.fetchPypi {
+            inherit pname version;
+            hash = "sha256-ZxGtYiNmx0UomGY9v37O6pso4SeWXzG+VH31ec/nsrY="; # Nix will output the correct hash if left blank
+            };
+          pyproject = true;
+          # Use hatchling instead of setuptools
+          build-system = [ ps.hatchling ];
+          propagatedBuildInputs = [ 
+              ps.numpy 
+              ps.scipy 
+              ps.beautifulsoup4
+              ps.lxml
+              ps.munch
+              ps.decorator
+            ];
+
+            dontCheckRuntimeDeps = true;
+            doCheck = false;
+          })
       ]);
 
     in {
