@@ -8,6 +8,17 @@ import pandas as pd
 from pathlib import Path
 import json
 
+class IdfManager(IdfClass):
+    def __init__(self, idf_wrapper:IdfClass):
+        self.wrapper = idf_wrapper
+
+    def set_values(self, type:str, property:str, values:list):
+        self.set_search(type=type,property=property)
+        for val in values:
+            self.idf.idfobjects[type][property] = val
+            new_name = self.out_path + "/" + self.idf_name + "_" + property + "_" + val + ".idf"
+            self.idf.save(new_name)
+
 class IdfParametric:
     def __init__(self,parameters):
         script_dir = Path(__file__).parent

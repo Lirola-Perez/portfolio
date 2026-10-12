@@ -39,6 +39,9 @@
         jupyterlab
         pytest
         nltk
+        fastapi
+        uvicorn
+        psycopg2-binary
 
         (ps.buildPythonPackage rec {
           pname = "eppy";
@@ -83,7 +86,8 @@
           # export PATH="/home/lirola/PROJECT/PORTFOLIO/energyplus:$PATH"
           #echo "--- Initializing Holistic Environment ---"
           echo "--- Clean Nix-LD Environment Initialized ---"
-          echo "--- WARNING: If python version changes -> delete .venv folder before entering environment ---"
+          echo "--- WARNING: Removing .venv folder before entering environment for package update ---"
+          echo "--- rm -rf .venv"
           if [ ! -d ".venv" ] || [ ! -f ".venv/bin/python" ]; then
             echo "--- Setting up clean virtual environment with Python 3.13 ---"
             #########################################################################################
@@ -99,6 +103,7 @@
             #.venv/bin/python -m ipykernel install --user --name=ml-course --display-name "Python (ML Course)"
           fi
           echo "Tip: Activate your python environment 'source .venv/bin/activate'"
+          echo "source .venv/bin/activate"
         '';
       };
     };

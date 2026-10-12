@@ -3,43 +3,85 @@ from zipfile import Path
 from eppy.modeleditor import IDF
 import os
 
-from numpy import isin
-
 class IdfClass(IDF):
-    def __init__(self,root, idf_name:str,epw_name:str):
-        super().__init__()
+        
+    def get_idf(self,root, idf_name:str,epw_name:str,path="default"):
         self.root = root
         self.idf_name = idf_name
         self.epw_name = epw_name
         self.project_folder = self.root + "/project/Eplusfiles"
 
-    def get_idf(self,path):
-        idd_path, idf_path, epw_path = self.get_paths(path)
+        self.get_paths(path)
         # 2. Set the IDD version so eppy knows how to parse it
-        print(f' IDD: {idd_path} \n IDF: {idf_path} \n EPW: {epw_path} ')
-        IDF.setiddname(idd_path)
+        print(f' IDD: {self.idd_path} \n IDF: {self.idf_path} \n EPW: {self.epw_path} ')
+        IDF.setiddname(self.idd_path)
         # 3. Load your IDF model
-        self.idf = IDF(idfname=idf_path, epw=epw_path)
+        self.idf = IDF(idfname=self.idf_path, epw=self.epw_path)
         print("IDF loaded successfully using eppy!")
         return self.idf
 
-    def get_paths(self,path="default"):
+    def get_paths(self,path):
         if path == "default":
             path_final = self.project_folder
         else:
             path_final = path
-        idf_path = os.path.join(path_final, self.idf_name + '.idf')
-        epw_path = os.path.join(self.project_folder, "weather", self.epw_name + ".epw")
-        idd_path = os.path.join(self.root,"energyplus", "Energy+.idd")
-        return idd_path, idf_path, epw_path
+        self.idf_path = os.path.join(path_final, self.idf_name + '.idf')
+        self.epw_path = os.path.join(self.project_folder, "weather", self.epw_name + ".epw")
+        self.idd_path = os.path.join(self.root,"energyplus", "Energy+.idd")
+        self.out_path = os.path.join(self.project_folder, "output")
 
-    def set_search(self, type:str, property:str | list):
-        self.current_type = type
-        self.current_property = property
-        self.objects = self.get_type_()
+class BaseType():
+    def __init__(self,idf:IDF):
+        self.idf = idf
 
-    def get_type_(self):
-        return self.idf.idfobjects[self.current_type]
+    def get_type(self,type_name):
+        return self.idf.idfobjects[type_name]
+
+    def set_type(self, type_name, val):
+        if hasattr(self.idf, type_name):
+            setattr(self.idf, type_name, val)
+        else:
+            raise AttributeError(f"Field '{type_name}' does not exist.")
+
+class Material(BaseType):
+    def __init__(self,idf):
+        super().__init__(idf)
+
+        self.objects = self.get_type("Material")
+        self.prop_list = ['Roughness',
+                    'Thickness',
+                    'Conductivity',
+                    'Density', 
+                    'Specific_Heat',
+                    'Thermal_Absorptance', 
+                    'Solar_Absorptance',
+                    'Visible_Absorptance']
+        
+    def get_dict_(self):
+        self.materials = dict()
+        for obj in self.objects:
+            material = obj["Name"]
+            prop_dict = {}
+            for key in self.prop_list:
+                prop_dict[key] = obj[key]
+            self.materials[material] = prop_dict
+
+    def get_properties(self, name,property):
+        self.get_dict_()
+        print(self.materials)
+        if self.materials[name]:
+            return self.materials[name][property]
+
+    def adapter(self):
+        pass
+
+    #################################
+
+    def set_property(self, name, property, value):
+        if property in self.list_prop:
+            for obj in self.objects:
+                obj[property] = value
+            print(self.objects)
     
     def get_type_property_(self):
         values = []
@@ -51,7 +93,7 @@ class IdfClass(IDF):
                 values.append(getattr(obj, self.current_property, None))
         return values
 
-    def assign_to_idf(self,val):
+    def assign_to_objects(self,val):
         for obj in self.objects:
             if isinstance(self.current_property,str) and isinstance(val,str | int):
                 setattr(obj,self.current_property, val)
@@ -59,6 +101,19 @@ class IdfClass(IDF):
                 for num,p in enumerate(self.current_property):
                     setattr(obj,p,val[num])
         return self.idf
+
+    def get_target(self,type,property):
+        return getattr(self.idf.idfobjects,property,None)
+
+    # def assign_to_idf(self,id:str, val:list|str|float):
+    #     for obj in self.objects:
+    #         if obj[:] == id:
+    #             if isinstance(val,list):
+    #                 for v in val:
+    #                     if isinstance(self.current_property,str):
+    #                         setattr(obj,self.current_property,v)
+
+
 
 
     # def get_info_eppy(self):

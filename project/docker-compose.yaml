@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # BACKEND SERVICES
+  core-service:
+    build: ./servise_core
+    ports: -"2001:8001" # host_port(laptop):container_port
+    environment:
+      - STORAGE_PATH=/app/storage
+    # Volume for commoon files
+    volumes:
+      - ./common_storage:./app/storge # host_storage(laptop);container_storage
+
+  runner-service:
+    build: ./service_runner
+    ports:
+      - "2002:8002"
+    environment:
+      - STORAGE_PATH=/app/storage
+      - CORE_SERVICE_PATH=http://core-service:8001
+    # Volume for commoon files
+    volumes:
+      - ./common_storage:./app/storge
+
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      - POSTGRES_USER=${DATABASE_USER} # stored in .env
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+    ports:
+      - "2003:5432"
+    volumes:
+      # laptop_name:container_name
+      - postgres_data:/var/lib/postgresql/data
+
+  ml-service:
+    build: ./neuronal_network
+    ports:
+      - "2004:8004"
+    depends_on:
+      - databse-service
+    # Volume for commoon files
+    volumes:
+      - ./common_storage:./app/storge
+
+  # FRONT END SERVICE
+  ui-service:
+    build: ./service_ui
+    ports:
+      - "2005:8501" # laptop:container(default streamlit)
+    environment:
+      - CORE_URL=http://core-service:8001
+      - RUNNER_URL=http://runner-service:8002
+
+  # relational data volume
+  volumes:
+    postgres_data:
