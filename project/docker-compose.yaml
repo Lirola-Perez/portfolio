@@ -7,9 +7,10 @@ services:
     ports: -"2001:8001" # host_port(laptop):container_port
     environment:
       - STORAGE_PATH=/app/storage
+      - EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
     # Volume for commoon files
     volumes:
-      - ./common_storage:/app/storge # host_storage(laptop);container_storage
+      - ./common_storage:/app/storage # host_storage(laptop);container_storage
 
   runner-service:
     build: ./service_runner
@@ -17,10 +18,11 @@ services:
       - "2002:8002" # localhost:2002 (between containers 8002)
     environment:
       - STORAGE_PATH=/app/storage
+      - EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
       - CORE_SERVICE_PATH=http://core-service:8001
     # Volume for commoon files
     volumes:
-      - ./common_storage:/app/storge
+      - ./common_storage:/app/storage
 
   postgres-db:
     image: postgres:15-alpine
@@ -34,6 +36,8 @@ services:
     volumes:
       # laptop_name:container_name
       - postgres_data:/var/lib/postgresql/data
+      # initializing the database in the container (calling .d)
+      - ./db_init:/docker-entrypoint-initdb.d
 
   ml-service:
     build: ./neuronal_network
@@ -43,7 +47,7 @@ services:
       - databse-service
     # Volume for commoon files
     volumes:
-      - ./common_storage:./app/storge
+      - ./common_storage:./app/storage
 
   # FRONT END SERVICE
   ui-service:

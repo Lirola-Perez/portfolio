@@ -18,5 +18,4 @@ def get_db_connection():
         password_db=DB_PASSWORD,
         port=DB_PORT
     )
-
     return connection
