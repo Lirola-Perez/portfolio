@@ -10,9 +10,9 @@ RUN apt-get update && apt-get install -y \
 
 # Download and install EnergyPlus 24.1.0 (or your preferred version)
 # Replace URL with the official GitHub release link for your target version
-RUN wget https://github.com/NREL/EnergyPlus/releases/download/v24.1.0/EnergyPlus-24.1.0-875afd34b6-Linux-Ubuntu22.04-x86_64.deb \
-    && apt-get update && apt-get install -y ./EnergyPlus-24.1.0-875afd34b6-Linux-Ubuntu22.04-x86_64.deb \
-    && rm EnergyPlus-24.1.0-875afd34b6-Linux-Ubuntu22.04-x86_64.deb
+RUN wget https://github.com/NatLabRockies/EnergyPlus/releases/tag/v23.1.0/EnergyPlus-23.1.0-87ed9199d4-Linux-Ubuntu22.04-x86_64.tar.gz \
+    && apt-get update && apt-get install -y ./EnergyPlus-23.1.0-87ed9199d4-Linux-Ubuntu22.04-x86_64.tar.gz \
+    && rm EnergyPlus-23.1.0-87ed9199d4-Linux-Ubuntu22.04-x86_64.tar.gz
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

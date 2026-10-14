@@ -22,8 +22,6 @@ class IdfClass(IDF):
         self.idf = IDF(idfname=self.idf_path, epw=self.epw_path)
         print("IDF loaded successfully using eppy!")
         return self.idf
-
-    
         
     def parse_idf_to_postgresql(self, idf:IDF, batch_id: int, object_key:str, attr:list):
     

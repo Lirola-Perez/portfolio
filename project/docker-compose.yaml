@@ -8,6 +8,8 @@ services:
     environment:
       - STORAGE_PATH=/app/storage
       - EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
+      - OUTPUT_PATH=/app/storage/output
+      - IDF_PATH=/app/storage/idf_files
     # Volume for commoon files
     volumes:
       - ./common_storage:/app/storage # host_storage(laptop);container_storage
