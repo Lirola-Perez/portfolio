@@ -5,11 +5,8 @@ services:
   core-service:
     build: ./servise_core
     ports: -"2001:8001" # host_port(laptop):container_port
-    environment:
-      - STORAGE_PATH=/app/storage
-      - EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
-      - OUTPUT_PATH=/app/storage/output
-      - IDF_PATH=/app/storage/idf_files
+    env_file:
+      - .env
     # Volume for commoon files
     volumes:
       - ./common_storage:/app/storage # host_storage(laptop);container_storage
@@ -18,38 +15,31 @@ services:
     build: ./service_runner
     ports:
       - "2002:8002" # localhost=2002 (between containers 8002)
+    env_file:
+      - .env
     environment:
-      - STORAGE_PATH=/app/storage
-      - EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
-      - WEATHER_PATH=/app/storage/weather
-      - OUTPUT_PATH=/app/storage/output
       - CORE_SERVICE_PATH=http://core-service:8001
-    # Volume for commoon files
+    # Mounting volume for commoon files
     volumes:
       - ./common_storage:/app/storage
 
-  postgres-db:
-    image: postgres:15-alpine
-    container_name: postgres_db
-    environment:
-      - POSTGRES_USER=${DATABASE_USER} # stored in .env
-      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
-      - POSTGRES_DB=${DATABASE_NAME}
+  postprocess_service:
+    build: ./service_postprocess
     ports:
-      - "2003:5432" # localhost=2003 (between containers 5432)
+      - "2003:8003" # localhost=2003 (between containers 8003)
+    env_file:
+      - .env
+    # Mounting volume for commoon files
     volumes:
-      # laptop_name:container_name
-      - postgres_data:/var/lib/postgresql/data
-      # initializing the database in the container (calling .d)
-      - ./db_init:/docker-entrypoint-initdb.d
+      - ./common_storage:/app/storage
 
   ml-service:
     build: ./neuronal_network
     ports:
       - "2004:8004"
     depends_on:
-      - databse-service
-    # Volume for commoon files
+      - postprocess-service
+    # Mounting volume for commoon files
     volumes:
       - ./common_storage:./app/storage
 
@@ -61,6 +51,21 @@ services:
     environment:
       - CORE_URL=http://core-service:8001
       - RUNNER_URL=http://runner-service:8002
+
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      - POSTGRES_USER=${DATABASE_USER} # stored in .env
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+    ports:
+      - "2006:5432" # localhost=2003 (between containers 5432)
+    volumes:
+      # laptop_name:container_name
+      - postgres_data:/var/lib/postgresql/data
+      # initializing the database in the container (calling .d)
+      - ./db_init:/docker-entrypoint-initdb.d
 
   # relational data volume
   volumes:

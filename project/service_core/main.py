@@ -1,5 +1,3 @@
-
-from project.service_core.idf_class import IdfClass
 from project.service_core.manager import IDFManager
 
 

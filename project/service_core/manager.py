@@ -75,6 +75,7 @@ class IDFManager:
         config_data = self.load_config_from_postgresql()
         # Getting the simulations from the dictionary:
         simulations = config_data.get("simulations", [])
+        output_list = config_data.get("output_list", [])
 
         list_idf_files = []
         # Looping the simulations:
@@ -93,7 +94,7 @@ class IDFManager:
             # -----------------------------------
             # Setting general simulation common configuration
             # Simulation config // output variables
-            idf_file = self.set_idf_info(idf_file)
+            idf_file = self.set_idf_info(idf_file,output_list)
             self.parametrization(idf_file,sim)
 
     def parametrization(self,idf_file:IDF,sim:dict):
@@ -159,7 +160,7 @@ class IDFManager:
             new_path = os.path.join(run_folder, new_idf_name + ".idf")
             idf_file.saveas(new_path)
 
-    def set_idf_info(self,idf:IDF):
+    def set_idf_info(self,idf:IDF,output_list:list):
 
         timestep = idf.idfobjects['Timestep'][0]
         if timestep.Number_of_Timesteps_per_Hour != 6:
@@ -184,16 +185,6 @@ class IDFManager:
             idf.idfobjects[item].clear()
             print(idf.idfobjects[item])
 
-        output_list = [
-            'Site Outdoor Air Drybulb Temperature', 
-            'Zone Outdoor Air Drybulb Temperature', 
-            'Site Outdoor Air Wetbulb Temperature', 
-            'Site Wind Speed', 
-            'Zone Outdoor Air Wind Speed', 
-            'Zone Air Temperature', 
-            'Zone Air System Sensible Heating Energy', 
-            'Zone Air System Sensible Cooling Energy'
-            ]
         self.output_object_generator(idf, output_list)
         return idf
 

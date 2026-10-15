@@ -3,22 +3,15 @@ from decorator import contextmanager
 import psycopg2
 
 # Reading the .env injected by Docker Compose
-
-DB_USER=os.getenv("DATABASE_USER")
-DB_PASSWORD = os.getenv("DATABASE_PASSWORD")
-DB_NAME = os.getenv("DATABASE_NAME")
-DB_HOST = os.getenv("DB_HOST", "postgres-db")
-DB_PORT = os.getenv("DB_PORT", "5432")
-
 @contextmanager
 def get_db_connection():
     '''Opens and returns a PostgreSQL connection'''
     conn = psycopg2.connect(
-        host=DB_HOST,
-        database=DB_NAME,
-        user=DB_USER,
-        password_db=DB_PASSWORD,
-        port=DB_PORT
+        host=os.getenv("DB_HOST", "postgres-db"),
+        database=os.getenv("DATABASE_NAME"),
+        user=os.getenv("DATABASE_USER"),
+        password_db=os.getenv("DATABASE_PASSWORD"),
+        port=os.getenv("DB_PORT", "5432")
     )
 
     try:
