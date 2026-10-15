@@ -1,5 +1,9 @@
 import os
 from pathlib import Path
+from sqlite3 import connect
+
+from decorator import contextmanager
+import psycopg2
 from postgres_connection import get_db_connection
 from eppy import IDF
 
@@ -27,6 +31,9 @@ class Runner:
             idf.run(weather=weather_total_path,
                     idd=self.idd_path,
                     output_directory=sim_output_path)
+            print(f"Simulation {sim_name} number: {sim_id} -> COMPLETED")
+
+
 
 
     def get_idf(self,idf_path:Path,epw_path:Path)-> IDF:
@@ -41,19 +48,16 @@ class Runner:
         print("IDF loaded successfully using eppy!")
         return self.idf
 
+
     def simulation_grabber(self)-> list[tuple]:
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """SELECT simulation_id,idf_filename,weather FROM simulations
-            WHERE status = 'pending';"""
-        )
-        # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]
-        simulations_to_run = cursor.fetchall()
-
-        cursor.close
-        conn.close
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """SELECT simulation_id,idf_filename,weather FROM simulations
+                    WHERE status = 'pending';"""
+                )
+                # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]
+                simulations_to_run = cursor.fetchall()
 
         return simulations_to_run

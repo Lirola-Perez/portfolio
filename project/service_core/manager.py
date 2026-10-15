@@ -28,50 +28,38 @@ class IDFManager:
             print(f"File 'parameter_run.json' not found in {self.storage_path}.")
 
     def parse_batch_parameters_to_postgresql(self, config_data:dict):
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute(
-                """INSERT INTO simulation_batches (status,config_data)
-                "VALUES (%s, %s)
-                "RETURNING batch_id""",
-                ("pending", Json(config_data),),
-            )
-            row = cursor.fetchone()
-            print("Debug - fetchone result:", row)  # Let's see what prints here
-
-            if row is None:
-                raise Exception(
-                    "The INSERT statement did not return a batch_id. Check your table"
-                    " schema."
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """INSERT INTO simulation_batches (status,config_data)
+                    "VALUES (%s, %s)
+                    "RETURNING batch_id""",
+                    ("pending", Json(config_data),),
                 )
-
-            self.batch_id = row[0]
-            conn.commit()
-            return self.batch_id
-
-        except Exception as e:
-            conn.rollback()
-            print(f"Error inserting sim: {e}. No bacht_id in 'parameter_run.json'.")
-            raise e
-        finally:
-            cursor.close()
-            conn.close()
+                row = cursor.fetchone()
+                print("Debug - fetchone result:", row)  # Let's see what prints here
+    
+                if row is None:
+                    raise Exception(
+                        "The INSERT statement did not return a batch_id. Check your table"
+                        " schema."
+                    )
+    
+                self.batch_id = row[0]
+                return self.batch_id
 
     def load_config_from_postgresql(self) -> dict:
         '''Connect to PostgresSQL to fetch JSONB config'''
         # Open connection -------------------------
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT config_data FROM simulation_batches WHERE batch_id = %s",
-            (self.batch_id,)
-        )
-        # to grab the row maching the batch_id
-        row = cursor.fetchone()
-        cursor.close()
-        conn.close()
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT config_data FROM simulation_batches WHERE batch_id = %s",
+                    (self.batch_id,)
+                )
+                # to grab the row maching the batch_id
+                row = cursor.fetchone()
         # Closed connection -------------------------
 
         if not row:
@@ -143,35 +131,30 @@ class IDFManager:
 
             status = "pending"
 
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                """ INSERT INTO simulations (batch_id,idf_file_name,weather,status_simulation,parameters_applied)
-                    VALUES (%s,%s,%s,%s,%s)
-                    RETURNING simulation_id;
-                    """,
-                    (self.batch_id,new_idf_name,weather,status,Json(run_sim),),
-            )
-            simulation = cursor.fetchone()
-            if simulation:
-                simulation_id = simulation[0]
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """ INSERT INTO simulations (batch_id,idf_file_name,weather,status_simulation,parameters_applied)
+                            VALUES (%s,%s,%s,%s,%s)
+                            RETURNING simulation_id;
+                            """,
+                            (self.batch_id,new_idf_name,weather,status,Json(run_sim),),
+                    )
+                    simulation = cursor.fetchone()
+                    # Connection automatic closed
+                    if simulation:
+                        simulation_id = simulation[0]
 
-            cursor.execute(
-                """INSERT INTO idf_components (simulation_id,
-                type_class,
-                type_name,
-                property_name,
-                property_value,
-                old_property_value,
-                weather) VALUES (%s,%s,%s,%s,%s,%s);""",
-                (type,type_name,property,val,old_value,weather,),
-            )
-
-            cursor.close()
-            conn.close()
-
-            # with open(run_folder / "parameter.json", "w") as f:
-            #     json.dump(run_sim, f, indent=4)
+                        cursor.execute(
+                            """INSERT INTO idf_components (simulation_id,
+                            type_class,
+                            type_name,
+                            property_name,
+                            property_value,
+                            old_property_value,
+                            weather) VALUES (%s,%s,%s,%s,%s,%s,%s);""",
+                            (simulation_id,type,type_name,property,val,old_value,weather,),
+                        )
 
             new_path = os.path.join(run_folder, new_idf_name + ".idf")
             idf_file.saveas(new_path)

@@ -1,4 +1,5 @@
 import os
+from decorator import contextmanager
 import psycopg2
 
 # Reading the .env injected by Docker Compose
@@ -9,9 +10,10 @@ DB_NAME = os.getenv("DATABASE_NAME")
 DB_HOST = os.getenv("DB_HOST", "postgres-db")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
+@contextmanager
 def get_db_connection():
     '''Opens and returns a PostgreSQL connection'''
-    connection = psycopg2.connect(
+    conn = psycopg2.connect(
         host=DB_HOST,
         database=DB_NAME,
         user=DB_USER,
@@ -19,4 +21,13 @@ def get_db_connection():
         port=DB_PORT
     )
 
-    return connection
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    return conn
