@@ -23,4 +23,4 @@ EXPOSE 8002
 RUN useradd app
 USER app
 
-CMD [ "python", "service_runner/main.py" ]
+CMD [ "python", "service_runner/runner.py" ]
