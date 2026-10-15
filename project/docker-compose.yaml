@@ -17,10 +17,12 @@ services:
   runner-service:
     build: ./service_runner
     ports:
-      - "2002:8002" # localhost:2002 (between containers 8002)
+      - "2002:8002" # localhost=2002 (between containers 8002)
     environment:
       - STORAGE_PATH=/app/storage
       - EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
+      - WEATHER_PATH=/app/storage/weather
+      - OUTPUT_PATH=/app/storage/output
       - CORE_SERVICE_PATH=http://core-service:8001
     # Volume for commoon files
     volumes:
@@ -34,7 +36,7 @@ services:
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRES_DB=${DATABASE_NAME}
     ports:
-      - "2003:5432" # localhost:2003 (between containers 5432)
+      - "2003:5432" # localhost=2003 (between containers 5432)
     volumes:
       # laptop_name:container_name
       - postgres_data:/var/lib/postgresql/data
@@ -55,7 +57,7 @@ services:
   ui-service:
     build: ./service_ui
     ports:
-      - "2005:8501" #  # localhost:2005 (between containers 8501 is Streamlit)
+      - "2005:8501" #  # localhost=2005 (between containers 8501 is Streamlit)
     environment:
       - CORE_URL=http://core-service:8001
       - RUNNER_URL=http://runner-service:8002

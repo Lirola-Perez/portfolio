@@ -141,14 +141,16 @@ class IDFManager:
             print(object)
             print(run_sim)
 
+            status = "pending"
+
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
-                """ INSERT INTO simulations (batch_id,idf_file_name,parameters_applied)
-                    VALUES (%s,%s,%s)
+                """ INSERT INTO simulations (batch_id,idf_file_name,weather,status_simulation,parameters_applied)
+                    VALUES (%s,%s,%s,%s,%s)
                     RETURNING simulation_id;
                     """,
-                    (self.batch_id,new_idf_name,Json(run_sim),),
+                    (self.batch_id,new_idf_name,weather,status,Json(run_sim),),
             )
             simulation = cursor.fetchone()
             if simulation:
