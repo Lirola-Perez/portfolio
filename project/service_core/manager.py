@@ -77,7 +77,6 @@ class IDFManager:
         simulations = config_data.get("simulations", [])
         output_list = config_data.get("output_list", [])
 
-        list_idf_files = []
         # Looping the simulations:
         for sim in simulations:
 

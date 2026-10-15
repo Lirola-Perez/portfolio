@@ -26,3 +26,9 @@ CREATE TABLE idf_components (
     old_property_value VARCHAR(255),
     weather VARCHAR(255)
 );
+
+-- 4. List of Output variables for the simulations
+CREATE TABLE output_variables (
+    batch_id INT REFERENCES simulation_batches(batch_id) ON DELETE CASCADE,
+    output_variables JSONB
+)

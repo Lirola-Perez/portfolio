@@ -12,15 +12,24 @@ class SimulationData:
             with conn.cursor() as cursor:
 
                 cursor.execute(
-                    """SELECT idf_filename FROM simulations 
+                    """SELECT idf_filename,batch_id FROM simulations 
                     WHERE status = 'Completed'
                     LIMIT 1"""
                 )
-                idf_name = cursor.fetchone()
-        return idf_name
+                idf_filename,batch = cursor.fetchall()
+
+                cursor.execute(
+                    """SELECT output_variables FROM output_variables
+                    WHERE batch_id = %s
+                    """, 
+                    batch
+                )
+                output_variables = cursor.fetchone()
+
+        return idf_filename,batch,output_variables
 
     def file_db_grabber(self):
 
-        file_name = self.completed_data_grabber()
-        Path(f"{self.output_path}/{file_name}")
+        file_name,batch_id,output_variables = self.completed_data_grabber()
+        Path(f"{self.output_path}/{file_name}/eplusscv.scv")
     
