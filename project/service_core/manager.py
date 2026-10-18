@@ -32,10 +32,10 @@ class IDFManager:
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
-                    """INSERT INTO simulation_batches (status,config_data)
-                    "VALUES (%s, %s)
-                    "RETURNING batch_id""",
-                    ("pending", Json(config_data),),
+                    """INSERT INTO simulation_batches (config_data)
+                    VALUES (%s)
+                    RETURNING batch_id""",
+                    (Json(config_data),),
                 )
                 row = cursor.fetchone()
                 print("Debug - fetchone result:", row)  # Let's see what prints here
@@ -134,7 +134,7 @@ class IDFManager:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
-                        """ INSERT INTO simulations (batch_id,idf_file_name,weather,status_simulation,parameters_applied)
+                        """INSERT INTO simulations (batch_id,idf_filename,weather,status_simulation,parameters_applied)
                             VALUES (%s,%s,%s,%s,%s)
                             RETURNING simulation_id;
                             """,

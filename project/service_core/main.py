@@ -1,4 +1,4 @@
-from project.service_core.manager import IDFManager
+from manager import IDFManager
 
 
 manager = IDFManager()

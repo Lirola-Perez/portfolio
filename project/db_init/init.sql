@@ -11,7 +11,8 @@ CREATE TABLE simulations (
     simulation_id SERIAL PRIMARY KEY,
     batch_id INT REFERENCES simulation_batches(batch_id) ON DELETE CASCADE,
     idf_filename VARCHAR(255),
-    status_simulation VARCHAR(100)
+    weather VARCHAR(255),
+    status_simulation VARCHAR(100),
     parameters_applied JSONB -- Specific changes made for this run
 );
 

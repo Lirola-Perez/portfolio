@@ -10,7 +10,7 @@ def get_db_connection():
         host=os.getenv("DB_HOST", "postgres-db"),
         database=os.getenv("DATABASE_NAME"),
         user=os.getenv("DATABASE_USER"),
-        password_db=os.getenv("DATABASE_PASSWORD"),
+        password=os.getenv("DATABASE_PASSWORD"),
         port=os.getenv("DB_PORT", "5432")
     )
 
