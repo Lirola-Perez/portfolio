@@ -76,6 +76,7 @@ class IDFManager:
         # Getting the simulations from the dictionary:
         simulations = config_data.get("simulations", [])
         output_list = config_data.get("output_list", [])
+        all_properties = config_data.get("all_properties",[])
 
         # Looping the simulations:
         for sim in simulations:
@@ -88,15 +89,15 @@ class IDFManager:
             weather_path = self.idf_weather_path / f"weather/{weather_name}.epw"
 
             # --- CREATING THE IDF CLASS --------
-            idf = IdfClass()
+            idf = IdfClass()        
             idf_file = idf.get_idf(idf_file_path,weather_path)
             # -----------------------------------
             # Setting general simulation common configuration
             # Simulation config // output variables
             idf_file = self.set_idf_info(idf_file,output_list)
-            self.parametrization(idf_file,sim)
+            self.parametrization(idf_file,sim,all_properties)
 
-    def parametrization(self,idf_file:IDF,sim:dict):
+    def parametrization(self,idf_file:IDF,sim:dict,all_properties:list):
         # Function to add/change the files with new parameters and 
         # create new directories and files.
 
@@ -112,7 +113,13 @@ class IDFManager:
             run_folder = Path(f"{self.output_path}/{idf_name}_{weather}_{property}_{val}")
             run_folder.mkdir(parents=True, exist_ok=True)
 
+            other_properties = [p for p in all_properties if p != property]
+            print(other_properties)
+            
             run_sim = sim
+            # Include all other_properties adjusted from other idfs
+            run_sim["other_properties"] = other_properties
+            # Include value changed from this idf
             run_sim["property_value"] = val
             
             new_idf_name = f"{idf_name}_{weather}_{property}_{val}"
@@ -128,6 +135,17 @@ class IDFManager:
             object[property] = val # type: ignore
             print(object)
             print(run_sim)
+
+            # taking other properties
+            other_values = []
+            for prop in other_properties:
+                object = idf_file.getobject(type, type_name)
+                val = object[prop] # type:ignore
+                if val: 
+                    other_values.append(val)
+                else:
+                    other_values.append(None)
+            run_sim["other_values"] = other_values
 
             status = "Pending"
 
@@ -152,8 +170,18 @@ class IDFManager:
                             property_name,
                             property_value,
                             old_property_value,
-                            weather) VALUES (%s,%s,%s,%s,%s,%s,%s);""",
-                            (simulation_id,type,type_name,property,val,old_value,weather,),
+                            weather,
+                            other_properties,
+                            other_values) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s);""",
+                            (simulation_id,
+                            type,
+                            type_name,
+                            property,
+                            val,
+                            old_value,
+                            weather,
+                            other_properties,
+                            other_values,),
                         )
                 conn.commit()
 

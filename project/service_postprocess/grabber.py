@@ -1,3 +1,4 @@
+import enum
 import os
 import pandas as pd
 from pathlib import Path
@@ -34,6 +35,11 @@ class SimulationData:
         data.to_parquet(file_path,index=False)
         print(f"Master dataset saved successfully at {file_path}")
 
+    def save_master_aux(self, data:pd.DataFrame):
+        file_path = os.path.join(self.output_path,"master_training_data.csv")
+        data.to_csv(file_path,index=False)
+        print(f"Master dataset saved successfully at {file_path}")
+
 
     def completed_data_grabber(self):
 
@@ -43,7 +49,7 @@ class SimulationData:
                 # Using UPDATE for update status and retrieve vars
                 # Using FOR UPDATE SKIP LOCKED to avoid conflict with other containers
                 cursor.execute(
-                    """UPDATE simulations SET status_simulation = 'Processing'
+                    """UPDATE simulations SET status_simulation = 'Processed'
                     WHERE simulation_id = (
                     SELECT simulation_id FROM simulations 
                     WHERE status_simulation = 'Completed'
@@ -71,7 +77,7 @@ class SimulationData:
 
     def file_db_grabber(self):
 
-        reset_pivoted = []
+        all_properties = []
 
         simulation_data,output_variables = self.completed_data_grabber()
         if simulation_data:
@@ -88,6 +94,14 @@ class SimulationData:
                 result[property] = parameters["property_value"]
                 result[f"{property}_old_value"] = parameters[f"{property}_old_value"]
                 print(property)
+                # Other properties
+                other_properties = parameters["other_properties"]
+                other_values = parameters["other_values"]
+                print(other_properties,other_values)
+
+                if other_properties:
+                    for enum,prop in enumerate(other_properties):
+                        result[prop] = other_values[enum]
 
                 # Unifying names
                 result = self.name_unifier(result)
@@ -98,9 +112,10 @@ class SimulationData:
                 # cleaning columns with only zeros
                 result = self.clean_columns(result)
 
+                all_properties = [property] + other_properties
                 # MELTING keeping the anchor columns Time, weather, file.
                 # melting all Zones variables and all values of those zones variables in one column.
-                id_vars = ['Time', 'Weather', 'File', property, f"{property}_old_value" ]
+                id_vars = ['Time', 'Weather', 'File' ] + all_properties
                 print(id_vars)
                 #print(result.columns)
                 # selecting all zone:variables for setting them in just one column
@@ -122,21 +137,23 @@ class SimulationData:
 
                 long_result = self.add_geometry_to_table(long_result,geometry)
 
-                index_list = []
-                all_properties = None
-                if property:
-                    all_properties = [property, f"{property}_old_value"]
-                    index_list = ['File', 'Zone', 'Variable', 'Weather', 'Area', 'Volume' ] + all_properties
+                long_result = self.preparing_table(long_result,all_properties)
 
-                pivoted = long_result.pivot_table(
-                    index=index_list,
-                    columns='Time', 
-                    values='Value'
-                    )
-    
-                reset_pivoted = pivoted.reset_index()
-    
-                reset_pivoted.to_csv(os.path.join(self.output_path,folder_name, 'epluszsz_mod.csv'), index=False)
+                long_result.to_csv(os.path.join(self.output_path,folder_name, 'epluszsz_mod.csv'), index=False)
+        
+            return long_result
+
+    def preparing_table(self,table, all_properties):
+
+        index_list = ['File', 'Zone', 'Variable', 'Weather', 'Area', 'Volume' ] + all_properties
+
+        pivoted = table.pivot_table(
+            index=index_list,
+            columns='Time', 
+            values='Value'
+            )
+
+        reset_pivoted = pivoted.reset_index()
 
         return reset_pivoted
 

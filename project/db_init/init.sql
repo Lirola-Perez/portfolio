@@ -25,7 +25,9 @@ CREATE TABLE idf_components (
     property_name VARCHAR(255),
     property_value VARCHAR(255),
     old_property_value VARCHAR(255),
-    weather VARCHAR(255)
+    weather VARCHAR(255),
+    other_properties VARCHAR(255),
+    other_values VARCHAR(255)
 );
 
 -- 4. List of Output variables for the simulations
