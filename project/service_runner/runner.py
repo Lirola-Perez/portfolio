@@ -1,7 +1,7 @@
 import os
 import time
+import traceback
 from pathlib import Path
-import psycopg2
 from postgres_connection import get_db_connection
 from eppy import IDF
 
@@ -30,7 +30,7 @@ class Runner:
                 try:
                     print(f"Starting to collect data simulation number: {sim_id}...")
                     weather_path = Path(os.getenv("WEATHER_PATH",local_weather_path))
-                    weather_total_path = Path(os.path.join(weather_path,weather_name))
+                    weather_total_path = Path(f"{weather_path}/{weather_name}.epw")
                     sim_output_path = Path(f"{self.output_path}/{sim_name}")
                     sim_total_path = Path(f"{sim_output_path}/{sim_name}.idf")
 
@@ -47,6 +47,7 @@ class Runner:
 
                 except Exception as e:
                     print(f"[{sim_id}] Simulation failed with error: {e}")
+                    traceback.print_exc()
                     self.update_simulation_status(sim_id,"Failed")
 
 
@@ -69,8 +70,8 @@ class Runner:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """SELECT simulation_id,idf_filename,weather FROM simulations
-                    WHERE status = 'Pending'
-                    LIMIT 1';"""
+                    WHERE status_simulation = 'Pending'
+                    LIMIT 1;"""
                 )
                 # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]
                 simulation_to_run = cursor.fetchone()
@@ -82,6 +83,6 @@ class Runner:
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
-                    """UPDATE simulations SET status = %s WHERE simulation_id = %s""",
+                    """UPDATE simulations SET status_simulation = %s WHERE simulation_id = %s""",
                     (status, id)
                 )

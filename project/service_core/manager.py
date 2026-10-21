@@ -129,7 +129,7 @@ class IDFManager:
             print(object)
             print(run_sim)
 
-            status = "pending"
+            status = "Pending"
 
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
@@ -155,6 +155,7 @@ class IDFManager:
                             weather) VALUES (%s,%s,%s,%s,%s,%s,%s);""",
                             (simulation_id,type,type_name,property,val,old_value,weather,),
                         )
+                conn.commit()
 
             new_path = os.path.join(run_folder, new_idf_name + ".idf")
             idf_file.saveas(new_path)

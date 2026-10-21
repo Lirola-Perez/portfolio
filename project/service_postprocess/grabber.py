@@ -19,7 +19,7 @@ class SimulationData:
                 break
             all_simulations.append(table)
 
-        if all_simulations:
+        if not all_simulations:
             print(f"WARNING: Empty master data table!")
             return pd.DataFrame()
         
@@ -43,10 +43,10 @@ class SimulationData:
                 # Using UPDATE for update status and retrieve vars
                 # Using FOR UPDATE SKIP LOCKED to avoid conflict with other containers
                 cursor.execute(
-                    """UPDATE simulations SET status = 'processing'
+                    """UPDATE simulations SET status_simulation = 'Processing'
                     WHERE simulation_id = (
                     SELECT simulation_id FROM simulations 
-                    WHERE status = 'Completed'
+                    WHERE status_simulation = 'Completed'
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED)
                     RETURNING simulation_id,idf_filename,batch_id,parameters_applied;"""
@@ -82,9 +82,10 @@ class SimulationData:
             if outpath_csv:
                 result = pd.read_csv(outpath_csv)
                 property = parameters["property"]
+                #old_property = f"{property}_old_value"
                 result['Weather'] = parameters["weather"]
                 result['File'] = parameters["idf_file"]
-                result[property] = parameters["value"]
+                result[property] = parameters["property_value"]
                 result[f"{property}_old_value"] = parameters[f"{property}_old_value"]
                 print(property)
 
@@ -99,7 +100,7 @@ class SimulationData:
 
                 # MELTING keeping the anchor columns Time, weather, file.
                 # melting all Zones variables and all values of those zones variables in one column.
-                id_vars = ['Time', 'Weather', 'File']
+                id_vars = ['Time', 'Weather', 'File', property, f"{property}_old_value" ]
                 print(id_vars)
                 #print(result.columns)
                 # selecting all zone:variables for setting them in just one column
@@ -135,7 +136,7 @@ class SimulationData:
     
                 reset_pivoted = pivoted.reset_index()
     
-                reset_pivoted.to_csv(os.path.join(folder_name, 'epluszsz_mod.csv'), index=False)
+                reset_pivoted.to_csv(os.path.join(self.output_path,folder_name, 'epluszsz_mod.csv'), index=False)
 
         return reset_pivoted
 

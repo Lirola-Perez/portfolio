@@ -1,5 +1,3 @@
-from pandas import DataFrame
-
 from grabber import SimulationData
 
 
