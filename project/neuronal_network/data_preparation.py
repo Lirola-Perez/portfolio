@@ -25,6 +25,7 @@ class Input:
         #self.df.drop([['Weather']])
         print(dummies)
 
+        # taking the time columns (format 00:00)
         col_names = [col for col in self.df.columns if ":" in str(col)]
         y_matrix = self.df[col_names]
         x_matrix = self.df.drop(columns=y_matrix)

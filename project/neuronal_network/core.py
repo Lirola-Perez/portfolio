@@ -9,13 +9,13 @@ class NeuronalNetwork:
 
     def buiding(self,input_dim,output_dim):
 
-        self.model = tf.keras.Sequential(
-            tf.keras.layers.Input(128, shape=[input_dim]),
+        self.model = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=[input_dim]),
             tf.keras.layers.Dense(254, activation='relu'),
             tf.keras.layers.Dense(254, activation='relu'),
             # there is no activation in final layer -> Regresion output
             tf.keras.layers.Dense(output_dim)
-        )
+        ])
 
         # Compile the model
         self.model.compile(
@@ -24,16 +24,17 @@ class NeuronalNetwork:
             metrics=['mae']         # Mean Absolute Error for easy-to-read evaluation
         )
 
-        return self.model
+        #return self.model
 
     def training(self,x,y,epochs=10,verbose=0):
 
         self.model.fit(x,y, epochs=epochs, verbose=verbose)
 
-        return self.model
+        #return self.model
 
     def evaluate(self,x,y,verbose=0):
 
-        self.model.evaluate(x,y,verbose=verbose)
+        results = self.model.evaluate(x,y,verbose=verbose)
+        self.model.summary()
 
-        return self.model
+        return results
