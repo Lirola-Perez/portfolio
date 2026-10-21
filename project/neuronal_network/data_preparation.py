@@ -1,16 +1,24 @@
-from sklearn.preprocessing import OneHotEncoder
+
 import pandas as pd
+import os
 
 class Input:
-    def __init__(self, data):
-        self.df = data
+    def __init__(self):
+        self.output_path = os.getenv("OUTPUT_PATH", "common_storage/output")
+        try:
+            file_path = os.path.join(self.output_path,"master_training_data.parquet")
+            print(file_path)
+            self.data = pd.read_parquet(file_path)
+            print(self.data)
+        except FileNotFoundError:
+            print("File Not Found. Be sure all simulations are 'Processed'.")
 
     def correlation(self):
         pass
 
     def one_hot(self):
         # Drop rows: missing values
-        self.df = self.df.dropna(axis=0)
+        self.df = self.data.dropna(axis=0)
 
         dummies = pd.get_dummies(self.df[['Weather',"Variable"]], dtype=int)
         self.df = pd.concat([self.df.drop(columns=['Weather', 'Variable', 'File', 'Zone']),dummies],axis=1)

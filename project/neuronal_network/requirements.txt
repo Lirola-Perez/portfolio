@@ -1,0 +1,6 @@
+pandas>=2.0.0
+numpy>=1.24.0
+pyarrow
+psycopg2-binary
+scikit-learn
+tensorflow

@@ -25,12 +25,11 @@ class SimulationData:
             return pd.DataFrame()
         
         master_df = pd.concat(all_simulations, axis=0)
-        print(f"Master data table successfully saved")
+        self.save_master_df(master_df)
     
         return master_df
 
     def save_master_df(self, data:pd.DataFrame):
-
         file_path = os.path.join(self.output_path,"master_training_data.parquet")
         data.to_parquet(file_path,index=False)
         print(f"Master dataset saved successfully at {file_path}")
