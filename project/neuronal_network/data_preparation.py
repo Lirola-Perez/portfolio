@@ -1,5 +1,7 @@
 
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 import os
 
 class Input:
@@ -13,21 +15,33 @@ class Input:
         except FileNotFoundError:
             print("File Not Found. Be sure all simulations are 'Processed'.")
 
-    def correlation(self):
-        pass
+    def scaler(self,x,y):
+        x_scaler = StandardScaler()
+        y_scaler = StandardScaler()
+
+        y_scaled = y_scaler.fit_transform(y)
+        x_scaled = x_scaler.fit_transform(x)
+        return x_scaled,y_scaled
+
+    def separating(self,x,y):
+        Xt,Xtest,Yt,Ytest = train_test_split(x,y,test_size=0.3, random_state=42)
+        return Xt,Xtest,Yt,Ytest
 
     def one_hot(self):
         # Drop rows: missing values
         self.df = self.data.dropna(axis=0)
 
+        # Preparing X matrix with numbers exclusively:
         dummies = pd.get_dummies(self.df[['Weather',"Variable"]], dtype=int)
         self.df = pd.concat([self.df.drop(columns=['Weather', 'Variable', 'File', 'Zone']),dummies],axis=1)
         #self.df.drop([['Weather']])
         print(dummies)
 
-        # taking the time columns (format 00:00)
-        col_names = [col for col in self.df.columns if ":" in str(col)]
-        y_matrix = self.df[col_names]
+        # Selecting Y matrix exclusively form from the time columns (format 00:00)
+        time_columns = [col for col in self.df.columns if ":" in str(col)]
+        y_matrix = self.df[time_columns]
+
+        # Selecting X matrix all other numbered columns except time ones.
         x_matrix = self.df.drop(columns=y_matrix)
         y = y_matrix.to_numpy()
         x = x_matrix.to_numpy()

@@ -7,7 +7,7 @@ import tensorflow as tf
 
 class NeuronalNetwork:
 
-    def buiding(self,input_dim,output_dim):
+    def compiler(self,input_dim,output_dim):
 
         self.model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=[input_dim]),
