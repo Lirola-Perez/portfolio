@@ -23,6 +23,7 @@ ENV EPLUS_IDD_PATH=/app/assets/Energy+.idd
 
 # COPY source dest
 COPY . .
+# internal container port (not public)
 EXPOSE 8001
 
 # User (not root)

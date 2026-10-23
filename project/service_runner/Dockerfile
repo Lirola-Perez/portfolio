@@ -21,6 +21,7 @@ RUN wget -O energyplus.tar.gz https://github.com/NREL/EnergyPlus/releases/downlo
 ENV EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
 
 COPY . .
+# internal container port (not public)
 EXPOSE 8002
 
 RUN useradd app

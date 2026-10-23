@@ -13,6 +13,9 @@ X_features_dim = X_train.shape[1]
 Y_time_dim = Y_train.shape[1]
 
 # Preparing the model:
+# DESCRIPTION:
+# 105.300 weights (trainable parameters)
+# net with 652 neurons total
 model = NeuronalNetwork()
 model.compiler(X_features_dim,Y_time_dim)
 

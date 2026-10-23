@@ -4,8 +4,6 @@ services:
   # BACKEND SERVICES
   core-service:
     build: ./service_core
-    ports:
-      - "2001:8001" # host_port(laptop):container_port
     depends_on:
       - postgres-db
     env_file:
@@ -15,8 +13,6 @@ services:
 
   runner-service:
     build: ./service_runner
-    ports:
-      - "2002:8002" # localhost=2002 (between containers 8002)
     env_file:
       - .env
     environment:
@@ -27,8 +23,6 @@ services:
 
   postprocess-service:
     build: ./service_postprocess
-    ports:
-      - "2003:8003" # localhost=2003 (between containers 8003)
     env_file:
       - .env
     # Mounting volume for commoon files
@@ -37,8 +31,6 @@ services:
 
   ml-service:
     build: ./neuronal_network
-    ports:
-      - "2004:8004"
     env_file:
       - .env
     depends_on:
@@ -50,11 +42,13 @@ services:
   # FRONT END SERVICE
   ui-service:
     build: ./service_ui
+    # Opening 2001 to web reach
     ports:
-      - "2005:8501" # localhost=2005 (between containers 8501 is Streamlit)
+      - "2001:8501" # localhost=2005 (between containers 8501 is Streamlit)
     environment:
       - CORE_URL=http://core-service:8001
       - RUNNER_URL=http://runner-service:8002
+      - POST_PROCESS_URL=http://postprocess-service:8003
 
   postgres-db:
     image: postgres:15-alpine
@@ -63,8 +57,6 @@ services:
       - POSTGRES_USER=${DATABASE_USER}
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRES_DB=${DATABASE_NAME}
-    ports:
-      - "2006:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db_init:/docker-entrypoint-initdb.d

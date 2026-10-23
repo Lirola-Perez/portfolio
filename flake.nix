@@ -20,6 +20,11 @@
         config.allowUnfree = true;
       };
 
+      firewall = {
+        enabled = true;
+        allowedTCPPOrts = [2002 2006];
+      };
+
       myPython = pkgs.python313.withPackages (ps: with ps; [
         pydantic
         black
@@ -77,6 +82,7 @@
           vscode
           pandoc
           texliveMedium
+          chromium
         ];
 
         # Runs automatically the moment of typing 'nix develop'
