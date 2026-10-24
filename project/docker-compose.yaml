@@ -1,4 +1,4 @@
-# version: '3.8'
+version: '3.8'
 
 services:
   # BACKEND SERVICES
@@ -42,9 +42,10 @@ services:
   # FRONT END SERVICE
   ui-service:
     build: ./service_ui
-    # Opening 2001 to web reach
+    env_file:
+      - .env
     ports:
-      - "2001:8501" # localhost=2005 (between containers 8501 is Streamlit)
+      - "2001:8000" # localhost=2001 
     environment:
       - CORE_URL=http://core-service:8001
       - RUNNER_URL=http://runner-service:8002

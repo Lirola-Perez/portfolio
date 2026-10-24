@@ -9,7 +9,7 @@ local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
 local_weather_path = "/home/lirola/PROJECT/PORFOLIO/project/common_storage/weather"
 
 class Runner:
-    def __init__(self) -> None:
+    def __init__(self):
         self.output_path = Path(os.getenv("OUTPUT_PATH", "/common_storage/output"))
         self.idd_path = Path(os.getenv("EPLUS_IDD_PATH", local_eplus_path))
 
