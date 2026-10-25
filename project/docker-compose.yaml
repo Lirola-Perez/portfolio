@@ -50,6 +50,8 @@ services:
       - CORE_URL=http://core-service:8001
       - RUNNER_URL=http://runner-service:8002
       - POST_PROCESS_URL=http://postprocess-service:8003
+    volumes:
+      - ./common_storage:/app/storage
 
   postgres-db:
     image: postgres:15-alpine

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Building Energy Predictor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+            background: #f4f4f9;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e2f0d9;
+            border: 1px solid #c8e1b9;
+            border-radius: 4px;
+            color: #274e13;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h2>Energy Model Prediction</h2>
+
+        <!-- The form submits data via POST to FastAPI -->
+        <form method="POST">
+            <div class="form-group">
+                <label>Area (m²):</label>
+                <input type="number" step="any" name="area" value="{{ area or '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Volume (m³):</label>
+                <input type="number" step="any" name="volume" value="{{ volume or '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Weather Profile:</label>
+                <select name="weather">
+                    <option value="chicago">Chicago-OHare</option>
+                    <option value="madrid">Madrid-Barajas</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Target Parameter to Predict:</label>
+                <select name="target">
+                    <option value="cooling">Cooling Load</option>
+                    <option value="heating">Heating Energy</option>
+                    <option value="peak_temp">Peak Temperature</option>
+                </select>
+            </div>
+
+            <button type="submit">Calculate Prediction</button>
+        </form>
+
+        <!-- If Python sent a prediction back, display it here -->
+        {% if prediction is not none %}
+        <div class="result">
+            <h3>Prediction Result:</h3>
+            <p>Estimated Value: <strong>{{ prediction }}</strong></p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+
+</html>
