@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Building Energy Predictor</title>
+    <title>Building Energy-Performance Predictor</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -69,13 +69,31 @@
         <!-- The form submits data via POST to FastAPI -->
         <form method="POST">
             <div class="form-group">
-                <label>Area (m²):</label>
+                <label>Space Floor Area (m²):</label>
                 <input type="number" step="any" name="area" value="{{ area or '' }}" required>
             </div>
 
             <div class="form-group">
-                <label>Volume (m³):</label>
-                <input type="number" step="any" name="volume" value="{{ volume or '' }}" required>
+                <label>Space Height (meters):</label>
+                <input type="number" step="any" name="height" value="{{ height or '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Thermal Conductivity (W/m-K):</label>
+                <select name="conductivity">
+                    <option value="0.04" {% if conductivity==0.04 %}selected{% endif %}>Low Insulation (0.04)</option>
+                    <option value="0.30" {% if conductivity==0.30 %}selected{% endif %}>Medium Brick (0.30)</option>
+                    <option value="1.40" {% if conductivity==1.40 %}selected{% endif %}>High Concrete (1.40)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Material Thickness (meters):</label>
+                <select name="thickness">
+                    <option value="0.05" {% if thickness==0.05 %}selected{% endif %}>5 cm (0.05m)</option>
+                    <option value="0.10" {% if thickness==0.10 %}selected{% endif %}>10 cm (0.10m)</option>
+                    <option value="0.20" {% if thickness==0.20 %}selected{% endif %}>20 cm (0.20m)</option>
+                </select>
             </div>
 
             <div class="form-group">
@@ -88,10 +106,10 @@
 
             <div class="form-group">
                 <label>Target Parameter to Predict:</label>
-                <select name="target">
-                    <option value="cooling">Cooling Load</option>
-                    <option value="heating">Heating Energy</option>
-                    <option value="peak_temp">Peak Temperature</option>
+                <select name="target_variable">
+                    <option value="Zone Air Temperature">Zone Air Temperature</option>
+                    <option value="Zone Air System Sensible Heating Energy">Heating Energy</option>
+                    <option value="Zone Air System Sensible Cooling Energy">Cooling Energy</option>
                 </select>
             </div>
 

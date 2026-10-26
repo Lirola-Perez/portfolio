@@ -9,10 +9,10 @@ class SimulationData:
     def __init__(self) -> None:
         self.output_path = os.getenv("OUTPUT_PATH", "common_storage/output")
 
-
     def worker(self):
 
         all_simulations = []
+
         while True:
             table = []
             table = self.file_db_grabber()
@@ -21,23 +21,38 @@ class SimulationData:
             all_simulations.append(table)
 
         if not all_simulations:
-            print(f"WARNING: Empty master data table!")
+            print(f"WARNING: Empty master data table or simulations already 'Processed'!")
             return pd.DataFrame()
         
         master_df = pd.concat(all_simulations, axis=0)
         self.save_master_df(master_df)
+        self.save_master_aux(master_df)
+
+        column_names = [col for col in list(master_df.columns) if ":" not in str(col)]
+        print(column_names)
+        if column_names:
+            column_path = os.path.join(self.output_path,"column_list.txt")
+            print(column_path)
+            with open(column_path, "w") as f:
+                f.write(str(column_names))
     
         return master_df
 
     def save_master_df(self, data:pd.DataFrame):
-        file_path = os.path.join(self.output_path,"master_training_data.parquet")
-        data.to_parquet(file_path,index=False)
-        print(f"Master dataset saved successfully at {file_path}")
+        if data.any:
+            file_path = os.path.join(self.output_path,"master_training_data.parquet")
+            data.to_parquet(file_path,index=False)
+            print(f"Master dataset saved successfully at {file_path}")
+        else:
+            print(f"No new data.parquet generated.")
 
     def save_master_aux(self, data:pd.DataFrame):
-        file_path = os.path.join(self.output_path,"master_training_data.csv")
-        data.to_csv(file_path,index=False)
-        print(f"Master dataset saved successfully at {file_path}")
+        if data.any:
+            file_path = os.path.join(self.output_path,"master_training_data.csv")
+            data.to_csv(file_path,index=False)
+            print(f"Master dataset saved successfully at {file_path}")
+        else:
+            print(f"No new data.csv generated.")
 
 
     def completed_data_grabber(self):
@@ -82,6 +97,7 @@ class SimulationData:
         if simulation_data:
             sim_id,folder_name,batch_id,parameters = simulation_data
             outpath_csv = self.get_file_output_path(folder_name,"epluszsz.csv")
+            print(outpath_csv)
             property = str
             long_result = pd.DataFrame
             if outpath_csv:
@@ -139,7 +155,7 @@ class SimulationData:
                 long_result = self.preparing_table(long_result,all_properties)
 
                 long_result.to_csv(os.path.join(self.output_path,folder_name, 'epluszsz_mod.csv'), index=False)
-        
+            print(long_result)
             return long_result
 
     def preparing_table(self,table, all_properties):
