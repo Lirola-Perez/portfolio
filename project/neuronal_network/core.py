@@ -1,10 +1,9 @@
-from tabnanny import verbose
-
-import numpy
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
+import pickle
 import tensorflow as tf
+import joblib
+import os
 
+storage_path = os.getenv("STORAGE_PATH", "common_storage/output")
 class NeuronalNetwork:
 
     def compiler(self,input_dim,output_dim):
@@ -31,6 +30,11 @@ class NeuronalNetwork:
         self.model.fit(x,y, epochs=epochs, verbose=verbose)
 
         #return self.model
+
+    def save_model(self):
+        model_path = os.path.join(storage_path, 'model.pkl')
+        joblib.dump(self.model,model_path, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"Model {model_path} saved successfully.")
 
     def evaluate(self,x,y,verbose=0):
 

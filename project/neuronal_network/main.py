@@ -25,3 +25,7 @@ model.training(X_train,Y_train,epochs=1000)
 # Evaluating the model:
 results = model.evaluate(X_test,Y_test)
 print(f"test loss: {results[0]} \nAccuracy: {results[1]}")
+
+# Saving the model:
+model.save_model()
+
