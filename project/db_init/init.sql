@@ -13,7 +13,8 @@ CREATE TABLE simulations (
     idf_filename VARCHAR(255),
     weather VARCHAR(255),
     status_simulation VARCHAR(100),
-    parameters_applied JSONB -- Specific changes made for this run
+    parameters_applied JSONB, -- Specific changes made for this run
+    results JSONB
 );
 
 -- 3. The parsed components tied to that specific simulation run
@@ -29,9 +30,3 @@ CREATE TABLE idf_components (
     other_properties VARCHAR(255),
     other_values VARCHAR(255)
 );
-
--- 4. List of Output variables for the simulations
-CREATE TABLE output_variables (
-    batch_id INT REFERENCES simulation_batches(batch_id) ON DELETE CASCADE,
-    output_variables JSONB
-)

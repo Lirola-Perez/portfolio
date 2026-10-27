@@ -48,6 +48,7 @@
         uvicorn
         psycopg2-binary
         flask
+        sqlalchemy
 
         (ps.buildPythonPackage rec {
           pname = "eppy";

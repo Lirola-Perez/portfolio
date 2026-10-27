@@ -5,7 +5,8 @@ services:
   core-service:
     build: ./service_core
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
     env_file:
       - .env
     volumes:

@@ -1,4 +1,3 @@
-import enum
 import os
 import pandas as pd
 from pathlib import Path
@@ -14,10 +13,15 @@ class SimulationData:
         all_simulations = []
 
         while True:
-            table = []
+            #table = pd.DataFrame()
             table = self.file_db_grabber()
+
             if table is None or not isinstance(table, pd.DataFrame):
-                break
+               print("NO TABLE GRABBED!")
+               break
+
+            self.result_data_grabber(table)
+
             all_simulations.append(table)
 
         if not all_simulations:
@@ -75,31 +79,63 @@ class SimulationData:
                 simulation_row = cursor.fetchone()
 
                 if not simulation_row:
-                    return None,None
+                    return None
 
-                _,_,batch_id,_ = simulation_row
+        return simulation_row
 
-                cursor.execute(
-                    """SELECT output_variables FROM output_variables
-                    WHERE batch_id = %s
-                    """, 
-                    (batch_id,),
-                )
-                output_variables_row = cursor.fetchone()
+    def result_data_grabber(self,results:pd.DataFrame):
 
-        return simulation_row,output_variables_row
+        results_json = results.to_json(orient="records")
+        print(results_json)
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                try:
+                    # 1. Update the claimed row with BOTH the status AND the results JSON
+                    cursor.execute(
+                        """
+                            UPDATE simulations 
+                            SET status_simulation = 'Results', 
+                                results = %s
+                            WHERE simulation_id = (
+                                SELECT simulation_id 
+                                FROM simulations 
+                                WHERE status_simulation = 'Processed'
+                                LIMIT 1
+                                FOR UPDATE SKIP LOCKED
+                            );
+                        """,
+                        (results_json,),
+                    )
+                    # # 2. Check if an actual row was updated
+                    # updated_row = cursor.fetchall()
 
-    def file_db_grabber(self):
+                    # if updated_row is None:
+                    #     print(
+                    #         "Warning: No row with status 'Processed' was found to update!"
+                    #         " (Check if rows are being inserted first)"
+                    #     )
+                    # else:
+                    #     print(
+                    #         f"Successfully saved results to simulation_id: {updated_row[0]}"
+                    #     )
+
+                except Exception as e:
+                    conn.rollback()  # Rollback if anything goes wrong
+                    print(f"Error saving results to DB: {e}")
+                    raise
+
+    def file_db_grabber(self) -> pd.DataFrame | None:
 
         all_properties = []
-
-        simulation_data,output_variables = self.completed_data_grabber()
+        long_result = None
+        simulation_data = self.completed_data_grabber()
         if simulation_data:
             sim_id,folder_name,batch_id,parameters = simulation_data
             outpath_csv = self.get_file_output_path(folder_name,"epluszsz.csv")
             print(outpath_csv)
             property = str
-            long_result = pd.DataFrame
+            long_result = pd.DataFrame()
             if outpath_csv:
                 result = pd.read_csv(outpath_csv)
                 property = parameters["property"]
@@ -156,7 +192,7 @@ class SimulationData:
 
                 long_result.to_csv(os.path.join(self.output_path,folder_name, 'epluszsz_mod.csv'), index=False)
             print(long_result)
-            return long_result
+        return long_result
 
     def preparing_table(self,table, all_properties):
 
