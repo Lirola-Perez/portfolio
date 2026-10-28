@@ -70,53 +70,79 @@
         <form method="POST">
             <div class="form-group">
                 <label>Space Floor Area (m²):</label>
-                <input type="number" step="any" name="area" value="{{ area or '' }}" required>
+                <input type="number" step="any" name="Area" value="{{ Area or '' }}" required>
             </div>
 
             <div class="form-group">
                 <label>Space Height (meters):</label>
-                <input type="number" step="any" name="height" value="{{ height or '' }}" required>
+                <input type="number" step="any" name="Height" value="{{ Height or '' }}" required>
             </div>
 
             <div class="form-group">
                 <label>Thermal Conductivity (W/m-K):</label>
-                <select name="conductivity">
-                    <option value="0.04" {% if conductivity==0.04 %}selected{% endif %}>Low Insulation (0.04)</option>
-                    <option value="0.30" {% if conductivity==0.30 %}selected{% endif %}>Medium Brick (0.30)</option>
-                    <option value="1.40" {% if conductivity==1.40 %}selected{% endif %}>High Concrete (1.40)</option>
+                <select name="Conductivity">
+                    <option value="0.04" {% if Conductivity==0.04 %}selected{% endif %}>Low Insulation (0.04)</option>
+                    <option value="0.30" {% if Conductivity==0.30 %}selected{% endif %}>Medium Brick (0.30)</option>
+                    <option value="1.40" {% if Conductivity==1.40 %}selected{% endif %}>High Concrete (1.40)</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label>Material Thickness (meters):</label>
-                <select name="thickness">
-                    <option value="0.05" {% if thickness==0.05 %}selected{% endif %}>5 cm (0.05m)</option>
-                    <option value="0.10" {% if thickness==0.10 %}selected{% endif %}>10 cm (0.10m)</option>
-                    <option value="0.20" {% if thickness==0.20 %}selected{% endif %}>20 cm (0.20m)</option>
+                <select name="Thickness">
+                    <option value="0.05" {% if Thickness==0.05 %}selected{% endif %}>5 cm (0.05m)</option>
+                    <option value="0.10" {% if Thickness==0.10 %}selected{% endif %}>10 cm (0.10m)</option>
+                    <option value="0.20" {% if Thickness==0.20 %}selected{% endif %}>20 cm (0.20m)</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label>Weather Profile:</label>
-                <select name="weather">
-                    <option value="chicago">Chicago-OHare</option>
-                    <option value="madrid">Madrid-Barajas</option>
+                <select name="Weather">
+                    <option value="Chicago" {%if Weather=='Chicago' %}selected{% endif %}>
+                        Chicago-OHare
+                    </option>
+                    <option value="Madrid" {%if Weather=='Madrid' %}selected{% endif %}>
+                        Madrid-Barajas
+                    </option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label>Target Parameter to Predict:</label>
-                <select name="target_variable">
-                    <option value="Variable_Cooling Zone Relative Humidity [%]">Variable_Cooling Zone Relative Humidity
-                        [%]</option>
-                    <option value="Variable_Cooling Zone Temperature [C]">Variable_Cooling Zone Temperature [C]</option>
-                    <option value="Variable_Des Cool Mass Flow [kg/s]">Variable_Des Cool Mass Flow [kg/s]</option>
-                    <option value="Variable_Des Heat Mass Flow [kg/s]">Variable_Des Heat Mass Flow [kg/s]</option>
-                    <option value="Variable_Des Heat Load [W]">Variable_Des Heat Load [W]</option>
-                    <option value="Variable_Des Sens Cool Load [W]">Variable_Des Sens Cool Load [W]</option>
-                    <option value="Variable_Heating Zone Relative Humidity [%]">Variable_Heating Zone Relative Humidity
-                        [%]</option>
-                    <option value="Variable_Heating Zone Temperature [C]">Variable_Heating Zone Temperature [C]</option>
+                <select name="Target_variable">
+                    <option value="Variable_Cooling Zone Relative Humidity [%]" {% if
+                        Target=='Variable_Cooling Zone Relative Humidity [%]' %}selected{% endif %}>
+                        Variable_Cooling Zone Relative Humidity [%]
+                    </option>
+                    <option value="Variable_Cooling Zone Temperature [C]" {% if
+                        Target=='Variable_Cooling Zone Temperature [C]' %}selected{% endif %}>
+                        Variable_Cooling Zone Temperature [C]
+                    </option>
+                    <option value="Variable_Des Cool Mass Flow [kg/s]" {% if
+                        Target=='Variable_Des Cool Mass Flow [kg/s]' %}selected{% endif %}>
+                        Variable_Des Cool Mass Flow [kg/s]
+                    </option>
+                    <option value="Variable_Des Heat Mass Flow [kg/s]" {% if
+                        Target=='Variable_Des Heat Mass Flow [kg/s]' %}selected{% endif %}>
+                        Variable_Des Heat Mass Flow [kg/s]
+                    </option>
+                    <option value="Variable_Des Heat Load [W]" {% if Target=='Variable_Des Heat Load [W]'
+                        %}selected{%endif %}>
+                        Variable_Des Heat Load [W]
+                    </option>
+                    <option value="Variable_Des Sens Cool Load [W]" {% if Target=='Variable_Des Sens Cool Load [W]'
+                        %}selected{% endif %}>
+                        Variable_Des Sens Cool Load [W]
+                    </option>
+                    <option value="Variable_Heating Zone Relative Humidity [%]" {% if
+                        Target=='Variable_Heating Zone Relative Humidity [%]' %}selected{% endif %}>
+                        Variable_Heating Zone Relative Humidity [%]
+                    </option>
+                    <option value="Variable_Heating Zone Temperature [C]" {% if
+                        Target=='Variable_Heating Zone Temperature [C]' %}selected{% endif %}>
+                        Variable_Heating Zone Temperature [C]
+                    </option>
                 </select>
             </div>
 
@@ -124,10 +150,10 @@
         </form>
 
         <!-- If Python sent a prediction back, display it here -->
-        {% if prediction is not none %}
+        {% if Prediction is not none %}
         <div class="result">
             <h3>Prediction Result:</h3>
-            <p>Estimated Value: <strong>{{ prediction }}</strong></p>
+            <p>Estimated Value: <strong>{{ Prediction }}</strong></p>
         </div>
         {% endif %}
     </div>

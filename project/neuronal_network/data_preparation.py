@@ -9,29 +9,18 @@ import json
 class Input:
     def __init__(self):
         self.output_path = os.getenv("OUTPUT_PATH", "common_storage/output")
+        self.storage_path = os.getenv("STORAGE_PATH", "common_storage")
         try:
             file_path = os.path.join(self.output_path,"master_training_data.parquet")
             print(file_path)
             self.data = pd.read_parquet(file_path)
-            print(self.data)
+            #print(self.data)
         except FileNotFoundError:
             print("File Not Found. Be sure all simulations are 'Processed'.")
 
-    def scaler(self,x,y):
-        x_scaler = StandardScaler()
-        y_scaler = StandardScaler()
+    def separating(self,x,y,size=0.3):
+        return train_test_split(x,y,test_size=size, random_state=42)
 
-        y_scaled = y_scaler.fit_transform(y)
-        x_scaled = x_scaler.fit_transform(x)
-
-        joblib.dump(x_scaler, os.path.join(self.output_path, "scaler_input.pkl"))
-        joblib.dump(y_scaler, os.path.join(self.output_path, "scaler_output.pkl"))
-
-        return x_scaled,y_scaled
-
-    def separating(self,x,y):
-        Xt,Xtest,Yt,Ytest = train_test_split(x,y,test_size=0.3, random_state=42)
-        return Xt,Xtest,Yt,Ytest
 
     def one_hot(self):
         # Drop rows: missing values

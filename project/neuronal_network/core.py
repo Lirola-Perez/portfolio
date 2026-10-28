@@ -1,9 +1,7 @@
-import pickle
 import tensorflow as tf
-import joblib
 import os
 
-storage_path = os.getenv("STORAGE_PATH", "common_storage/output")
+storage_path = os.getenv("STORAGE_PATH", "/common_storage/")
 class NeuronalNetwork:
 
     def compiler(self,input_dim,output_dim):
@@ -18,7 +16,7 @@ class NeuronalNetwork:
 
         # Compile the model
         self.model.compile(
-            optimizer='adam', 
+            optimizer='adam',
             loss='mse',             # Mean Squared Error penalizes big peaks
             metrics=['mae']         # Mean Absolute Error for easy-to-read evaluation
         )
@@ -32,8 +30,8 @@ class NeuronalNetwork:
         #return self.model
 
     def save_model(self):
-        model_path = os.path.join(storage_path, 'model.pkl')
-        joblib.dump(self.model,model_path, protocol=pickle.HIGHEST_PROTOCOL)
+        model_path = os.path.join(storage_path, 'model.keras') # Use .keras extension
+        self.model.save(model_path)                           # Native Keras save
         print(f"Model {model_path} saved successfully.")
 
     def evaluate(self,x,y,verbose=0):

@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+import tensorflow as tf
 import joblib
 import pandas as pd
 from pydantic import BaseModel, Field
@@ -8,26 +9,34 @@ from typing import Annotated
 import os
 import json
 
+# 1. Force Pandas to show all columns instead of hiding them with "..."
+pd.set_option('display.max_columns', None)
+
+# 2. Force Pandas to show wide lines so it doesn't wrap awkwardly
+pd.set_option('display.width', 1000)
+
+# 3. (Optional) Show all rows if it's cutting off vertically too
+pd.set_option('display.max_rows', None)
+
 storage_path = os.getenv("STORAGE_PATH", "/common_storage/")
 output_path = os.getenv("OUTPUT_PATH", "/common_storage/output")
-model_path = os.path.join(storage_path,"model.pkl")
+model_path = os.path.join(storage_path,"model.keras")
+scaler_input_path = os.path.join(storage_path,"scaler_x.pkl")
+scaler_output_path = os.path.join(storage_path,"scaler_y.pkl")
 columns_path = os.path.join(output_path,"column_list.json")
 with open(columns_path,"r") as f:
     training_columns = json.load(f)
-scaler_input_path = os.path.join(output_path,"scaler_input.pkl")
-scaler_output_path = os.path.join(output_path,"scaler_output.pkl")
-#training_columns = joblib.load(columns_path) if os.path.exists(columns_path) else []
 
 app = FastAPI(title="Energy-Performance Building Simulation Machine Learning Engine")
 templates = Jinja2Templates(directory="templates")
 
 class PredictionInput(BaseModel):
-    weather: str
-    target_variable: str
-    area: float = Field(..., gt=0, description="Area of the room or zone.")
-    height: float = Field(..., gt=0, description="Height of the room or zone.")
-    conductivity: float
-    thickness: float
+    Weather: str
+    Target_variable: str
+    Area: float = Field(..., gt=0, description="Area of the room or zone.")
+    Height: float = Field(..., gt=0, description="Height of the room or zone.")
+    Conductivity: float
+    Thickness: float
     
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
@@ -39,13 +48,14 @@ async def calculate_prediction(
     # 2. FastAPI automatically maps the HTML form data into your Pydantic model!
     form_data: Annotated[PredictionInput, Form()]
 ):
-    # Pydantic has already validated that area and volume are valid floats > 0
-    # You can access them cleanly using dot notation: form_data.area
+    # Pydantic has already validated that Area and volume are valid floats > 0
+    # You can access them cleanly using dot notation: form_data.Area
     
-    volume = form_data.area * form_data.height
+    volume = form_data.Area * form_data.Height
 
     print(training_columns)
     data_input = data_preparation(form_data,volume,columns_order=training_columns)
+    print(data_input)
 
     scaler_input = joblib.load(scaler_input_path) if os.path.exists(scaler_input_path) else None
     scaler_output = joblib.load(scaler_output_path) if os.path.exists(scaler_output_path) else None
@@ -62,21 +72,21 @@ async def calculate_prediction(
             prediction_result = scaler_output.inverse_transform(prediction_result)
     else:
         print(f"FAKE PREDICTION!")
-        prediction_result = round(form_data.area * 0.45 + form_data.height * 0.12, 2)
+        prediction_result = round(form_data.Area * 0.45 + form_data.Height * 0.12, 2)
 
-    print(f"{volume}, {prediction_result}") 
+    print(f"{prediction_result}") 
 
     return templates.TemplateResponse(request=request,name="index.html",context={
-        "request": request,
-        "prediction": prediction_result,
+        "Request": request,
+        "Prediction": prediction_result,
         # pass form_data back to keep fields filled out
-        "area": form_data.area,
-        "height": form_data.height,
-        "volume": volume,
-        "weather": form_data.weather,
-        "target": form_data.target_variable,
-        "thickness": form_data.thickness,
-        "conductivity": form_data.conductivity
+        "Area": form_data.Area,
+        "Height": form_data.Height,
+        "Volume": volume,
+        "Weather": form_data.Weather,
+        "Target": form_data.Target_variable,
+        "Thickness": form_data.Thickness,
+        "Conductivity": form_data.Conductivity
     })
 
 def use_model():
@@ -86,8 +96,7 @@ def use_model():
         return None
     
     try:
-        # Pass the path string directly to joblib.load
-        model = joblib.load(model_path)
+        model = tf.keras.models.load_model(os.path.join(storage_path, 'model.keras'))
         print(f"Model successfully loaded from {model_path}.")
         return model
     except Exception as e:
@@ -96,25 +105,26 @@ def use_model():
 
 def data_preparation(form_data:Annotated, volume:float, columns_order=training_columns):
 
-    feature_dict = {col.lower(): 0.0 for col in list(columns_order)}
+    feature_dict = {col: 0.0 for col in list(columns_order)}
 
-    if "area" in feature_dict:
-        feature_dict["area"] = form_data.area
-    if "volume" in feature_dict:
-        feature_dict["volume"] = volume
-    if "conductivity" in feature_dict:
-        feature_dict["conductivity"] = form_data.conductivity
-    if "thickness" in feature_dict:
-        feature_dict["thickness"] = form_data.thickness
+    if "Area" in feature_dict:
+        feature_dict["Area"] = form_data.Area
+    if "Volume" in feature_dict:
+        feature_dict["Volume"] = volume
+    if "Conductivity" in feature_dict:
+        feature_dict["Conductivity"] = form_data.Conductivity
+    if "Thickness" in feature_dict:
+        feature_dict["Thickness"] = form_data.Thickness
         
-    # Handle weather or categorical columns if they exist in your training columns
-    weather_col = f"weather_{form_data.weather}"
+    # Handle Weather or categorical columns if they exist in your training columns
+    weather_col = f"Weather_{form_data.Weather}"
     if weather_col in feature_dict:
         feature_dict[weather_col] = 1.0
         
-    target_col = f"{form_data.target_variable}"
+    target_col = f"{form_data.Target_variable}"
     if target_col in feature_dict:
         feature_dict[target_col] = 1.0
+        print(f"Successfully activated target flag: {target_col} = 1.0")
     
     # 2. Convert to a DataFrame (this preserves column names if your model was trained on a DataFrame)
     input_df = pd.DataFrame([feature_dict])

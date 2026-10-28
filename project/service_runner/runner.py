@@ -26,7 +26,7 @@ class Runner:
                 continue
 
             if simulation_pending:
-                sim_id,sim_name,weather_name = simulation_pending
+                sim_id,batch_id, sim_name,weather_name = simulation_pending
                 try:
                     print(f"Starting to collect data simulation number: {sim_id}...")
                     weather_path = Path(os.getenv("WEATHER_PATH",local_weather_path))
@@ -42,7 +42,7 @@ class Runner:
                             idd=self.idd_path,
                             output_directory=sim_output_path)
                     
-                    print(f"Simulation {sim_name} number: {sim_id} -> COMPLETED")
+                    print(f"Simulation {sim_name} number: {sim_id} batch: {batch_id}-> COMPLETED")
                     self.update_simulation_status(sim_id,"Completed")
 
                 except Exception as e:
@@ -69,8 +69,9 @@ class Runner:
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
-                    """SELECT simulation_id,idf_filename,weather FROM simulations
+                    """SELECT simulation_id,batch_id,idf_filename,weather FROM simulations
                     WHERE status_simulation = 'Pending'
+                    OR status_simulation = 'Failed'
                     LIMIT 1;"""
                 )
                 # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]

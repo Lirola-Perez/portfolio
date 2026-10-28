@@ -13,7 +13,7 @@ class SimulationData:
         all_simulations = []
 
         while True:
-            #table = pd.DataFrame()
+            
             table = self.file_db_grabber()
 
             if table is None or not isinstance(table, pd.DataFrame):
@@ -107,18 +107,6 @@ class SimulationData:
                         """,
                         (results_json,),
                     )
-                    # # 2. Check if an actual row was updated
-                    # updated_row = cursor.fetchall()
-
-                    # if updated_row is None:
-                    #     print(
-                    #         "Warning: No row with status 'Processed' was found to update!"
-                    #         " (Check if rows are being inserted first)"
-                    #     )
-                    # else:
-                    #     print(
-                    #         f"Successfully saved results to simulation_id: {updated_row[0]}"
-                    #     )
 
                 except Exception as e:
                     conn.rollback()  # Rollback if anything goes wrong
