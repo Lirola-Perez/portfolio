@@ -30,6 +30,10 @@ jobs:
           python -m pip install -vr project/service_ui/requirements.txt
           pip install -v pytest httpx
 
+      - name: Run Code Linter (Ruff)
+        run: |
+          ruff check project/
+
       - name: Run test suite
         run: |
           cd project
