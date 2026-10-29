@@ -27,7 +27,7 @@ jobs:
         run: |
           python -m pip list
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -vr project/service_ui/requirements.txt; fi
+          python -m pip install -vr project/service_ui/requirements.txt
           pip install -v pytest httpx
 
       - name: Run test suite
