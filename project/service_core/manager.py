@@ -42,7 +42,7 @@ class IDFManager:
                 print("Debug - fetchone result:", row)  # Let's see what prints here
 
                 if row is None:
-                    raise Exception(
+                    raise ValueError(
                         "The INSERT statement did not return a batch_id. Check your table"
                         " schema."
                     )

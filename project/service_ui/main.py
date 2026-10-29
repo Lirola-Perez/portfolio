@@ -124,8 +124,20 @@ def use_model():
         model = tf.keras.models.load_model(os.path.join(storage_path, 'model.keras'))
         print(f"Model successfully loaded from {model_path}.")
         return model
-    except Exception as e:
-        print(f"Error loading model: {e}")
+    
+    except (FileNotFoundError, OSError) as e:
+        print(f"Critical: Model file missing or unreadable at {model_path}: {e}")
+        return None
+
+    except (ValueError, KeyError) as e:
+        print(f"Critical: Model file is corrupted or structurally incompatible: {e}")
+        return None
+
+    except Exception as e:  # noqa: BLE001
+        # If TensorFlow throws an unexpected internal C++ runtime exception 
+        # that doesn't inherit from standard Python file/value errors, 
+        # use # noqa: BLE001 to safely catch it as a final fallback.
+        print(f"Unexpected TensorFlow internal error loading model: {e}")
         return None
 
 def data_preparation(form_data:Annotated, volume:float, columns_order=training_columns):
