@@ -25,6 +25,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python -m pip list
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -vr project/service_ui/requirements.txt; fi
           pip install -v pytest httpx
