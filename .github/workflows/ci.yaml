@@ -29,4 +29,4 @@ jobs:
       - name: Run test suite
         run: |
           cd project
-          pytest test/ -v
+          pytest tests/ -v
