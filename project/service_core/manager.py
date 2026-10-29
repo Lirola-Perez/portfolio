@@ -220,7 +220,6 @@ class IDFManager:
             except Exception as e: # noqa: BLE001 
                 print(f"Error saving results to DB: {e}")
                 raise
-            conn.commit()
 
             new_path = os.path.join(run_folder, new_idf_name + ".idf")
             idf_file.saveas(new_path)

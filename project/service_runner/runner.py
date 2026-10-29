@@ -1,4 +1,5 @@
 import os
+import psycopg2
 import subprocess
 import time
 import traceback
@@ -79,15 +80,34 @@ class Runner:
 
     def pending_simulation_grabber(self) -> tuple | None:
         "Takes just one simulation with statusn 'pending'"
-        with get_db_connection() as conn, conn.cursor() as cursor:
-            cursor.execute(
-                """SELECT simulation_id,batch_id,idf_filename,weather FROM simulations
-                WHERE status_simulation = 'Pending'
-                OR status_simulation = 'Failed'
-                LIMIT 1;"""
-            )
-            # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]
-            simulation_to_run = cursor.fetchone()
+        try: 
+            with get_db_connection() as conn, conn.cursor() as cursor:
+                cursor.execute(
+                    """SELECT simulation_id,batch_id,idf_filename,weather FROM simulations
+                    WHERE status_simulation = 'Pending'
+                    OR status_simulation = 'Failed'
+                    LIMIT 1;"""
+                )
+                # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]
+                simulation_to_run = cursor.fetchone()
+        except psycopg2.OperationalError as e:
+            # Handles connection drops, network failures, or database down states
+            print(f"Database operational error (connection/timeout): {e}")
+            raise
+
+        except psycopg2.ProgrammingError as e:
+            # Handles syntax errors in your SQL query or missing tables/columns
+            print(f"Database programming error (bad SQL/schema): {e}")
+            raise
+
+        except psycopg2.DatabaseError as e:
+            # Catch-all for any other database-specific errors
+            print(f"General database error: {e}")
+            raise
+
+        except Exception as e: # noqa: BLE001 
+            print(f"Error saving results to DB: {e}")
+            raise
                     
         return simulation_to_run
 
