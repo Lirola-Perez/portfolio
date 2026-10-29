@@ -20,11 +20,6 @@
         config.allowUnfree = true;
       };
 
-      firewall = {
-        enabled = true;
-        allowedTCPPOrts = [2001 2002 2006];
-      };
-
       myPython = pkgs.python313.withPackages (ps: with ps; [
         pydantic
         black
