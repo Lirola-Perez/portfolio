@@ -29,37 +29,35 @@ class IDFManager:
 
     def parse_batch_parameters_to_postgresql(self, config_data:dict):
         
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """INSERT INTO simulation_batches (config_data)
-                    VALUES (%s)
-                    RETURNING batch_id""",
-                    (Json(config_data),),
+        with get_db_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                """INSERT INTO simulation_batches (config_data)
+                VALUES (%s)
+                RETURNING batch_id""",
+                (Json(config_data),),
+            )
+            row = cursor.fetchone()
+            print("Debug - fetchone result:", row)  # Let's see what prints here
+
+            if row is None:
+                raise Exception(
+                    "The INSERT statement did not return a batch_id. Check your table"
+                    " schema."
                 )
-                row = cursor.fetchone()
-                print("Debug - fetchone result:", row)  # Let's see what prints here
-    
-                if row is None:
-                    raise Exception(
-                        "The INSERT statement did not return a batch_id. Check your table"
-                        " schema."
-                    )
-    
-                self.batch_id = row[0]
-                return self.batch_id
+
+            self.batch_id = row[0]
+            return self.batch_id
 
     def load_config_from_postgresql(self) -> dict:
         '''Connect to PostgresSQL to fetch JSONB config'''
         # Open connection -------------------------
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    "SELECT config_data FROM simulation_batches WHERE batch_id = %s",
-                    (self.batch_id,)
-                )
-                # to grab the row maching the batch_id
-                row = cursor.fetchone()
+        with get_db_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT config_data FROM simulation_batches WHERE batch_id = %s",
+                (self.batch_id,)
+            )
+            # to grab the row maching the batch_id
+            row = cursor.fetchone()
         # Closed connection -------------------------
 
         if not row:
@@ -149,41 +147,40 @@ class IDFManager:
 
             status = "Pending"
 
-            with get_db_connection() as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(
-                        """INSERT INTO simulations (batch_id,idf_filename,weather,status_simulation,parameters_applied)
-                            VALUES (%s,%s,%s,%s,%s)
-                            RETURNING simulation_id;
-                            """,
-                            (self.batch_id,new_idf_name,weather,status,Json(run_sim),),
-                    )
-                    simulation = cursor.fetchone()
-                    # Connection automatic closed
-                    if simulation:
-                        simulation_id = simulation[0]
+            with get_db_connection() as conn, conn.cursor() as cursor:
+                cursor.execute(
+                    """INSERT INTO simulations (batch_id,idf_filename,weather,status_simulation,parameters_applied)
+                        VALUES (%s,%s,%s,%s,%s)
+                        RETURNING simulation_id;
+                        """,
+                        (self.batch_id,new_idf_name,weather,status,Json(run_sim),),
+                )
+                simulation = cursor.fetchone()
+                # Connection automatic closed
+                if simulation:
+                    simulation_id = simulation[0]
 
-                        cursor.execute(
-                            """INSERT INTO idf_components (simulation_id,
-                            type_class,
-                            type_name,
-                            property_name,
-                            property_value,
-                            old_property_value,
-                            weather,
-                            other_properties,
-                            other_values) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s);""",
-                            (simulation_id,
-                            type,
-                            type_name,
-                            property,
-                            val,
-                            old_value,
-                            weather,
-                            other_properties,
-                            other_values,),
-                        )
-                conn.commit()
+                    cursor.execute(
+                        """INSERT INTO idf_components (simulation_id,
+                        type_class,
+                        type_name,
+                        property_name,
+                        property_value,
+                        old_property_value,
+                        weather,
+                        other_properties,
+                        other_values) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s);""",
+                        (simulation_id,
+                        type,
+                        type_name,
+                        property,
+                        val,
+                        old_value,
+                        weather,
+                        other_properties,
+                        other_values,),
+                    )
+            conn.commit()
 
             new_path = os.path.join(run_folder, new_idf_name + ".idf")
             idf_file.saveas(new_path)
@@ -218,7 +215,7 @@ class IDFManager:
 
     def key_filter(self,idf, word:str) -> list:
         key_filtered = []
-        for key in idf.idfobjects.keys():
+        for key in idf.idfobjects.key():
             word_cap = word.upper()
             if key.startswith(word_cap):
                 key_filtered.append(key)

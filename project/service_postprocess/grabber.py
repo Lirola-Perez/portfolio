@@ -61,25 +61,24 @@ class SimulationData:
 
     def completed_data_grabber(self):
 
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
+        with get_db_connection() as conn, conn.cursor() as cursor:
 
-                # Using UPDATE for update status and retrieve vars
-                # Using FOR UPDATE SKIP LOCKED to avoid conflict with other containers
-                cursor.execute(
-                    """UPDATE simulations SET status_simulation = 'Processed'
-                    WHERE simulation_id = (
-                    SELECT simulation_id FROM simulations 
-                    WHERE status_simulation = 'Completed'
-                    LIMIT 1
-                    FOR UPDATE SKIP LOCKED)
-                    RETURNING simulation_id,idf_filename,batch_id,parameters_applied;"""
-                )
+            # Using UPDATE for update status and retrieve vars
+            # Using FOR UPDATE SKIP LOCKED to avoid conflict with other containers
+            cursor.execute(
+                """UPDATE simulations SET status_simulation = 'Processed'
+                WHERE simulation_id = (
+                SELECT simulation_id FROM simulations 
+                WHERE status_simulation = 'Completed'
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED)
+                RETURNING simulation_id,idf_filename,batch_id,parameters_applied;"""
+            )
 
-                simulation_row = cursor.fetchone()
+            simulation_row = cursor.fetchone()
 
-                if not simulation_row:
-                    return None
+            if not simulation_row:
+                return None
 
         return simulation_row
 
@@ -88,30 +87,29 @@ class SimulationData:
         results_json = results.to_json(orient="records")
         print(results_json)
         
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                try:
-                    # 1. Update the claimed row with BOTH the status AND the results JSON
-                    cursor.execute(
-                        """
-                            UPDATE simulations 
-                            SET status_simulation = 'Results', 
-                                results = %s
-                            WHERE simulation_id = (
-                                SELECT simulation_id 
-                                FROM simulations 
-                                WHERE status_simulation = 'Processed'
-                                LIMIT 1
-                                FOR UPDATE SKIP LOCKED
-                            );
-                        """,
-                        (results_json,),
-                    )
+        with get_db_connection() as conn, conn.cursor() as cursor:
+            try:
+                # 1. Update the claimed row with BOTH the status AND the results JSON
+                cursor.execute(
+                    """
+                        UPDATE simulations 
+                        SET status_simulation = 'Results', 
+                            results = %s
+                        WHERE simulation_id = (
+                            SELECT simulation_id 
+                            FROM simulations 
+                            WHERE status_simulation = 'Processed'
+                            LIMIT 1
+                            FOR UPDATE SKIP LOCKED
+                        );
+                    """,
+                    (results_json,),
+                )
 
-                except Exception as e:
-                    conn.rollback()  # Rollback if anything goes wrong
-                    print(f"Error saving results to DB: {e}")
-                    raise
+            except Exception as e:
+                conn.rollback()  # Rollback if anything goes wrong
+                print(f"Error saving results to DB: {e}")
+                raise
 
     def file_db_grabber(self) -> pd.DataFrame | None:
 
@@ -119,7 +117,7 @@ class SimulationData:
         long_result = None
         simulation_data = self.completed_data_grabber()
         if simulation_data:
-            sim_id,folder_name,batch_id,parameters = simulation_data
+            _,folder_name,_,parameters = simulation_data
             outpath_csv = self.get_file_output_path(folder_name,"epluszsz.csv")
             print(outpath_csv)
             property = str
@@ -270,7 +268,7 @@ class SimulationData:
 
         cursor.execute("SELECT ZoneName, FloorArea, Volume FROM Zones;")
         zones = cursor.fetchall()
-        geo = dict()
+        geo = {}
         for zone,area,volume in zones:
             geo[zone]={'Area':area, 'Volume':volume}
         conn.close()

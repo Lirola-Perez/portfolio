@@ -1,9 +1,11 @@
 import os
+import subprocess
 import time
 import traceback
 from pathlib import Path
 from postgres_connection import get_db_connection
 from eppy import IDF
+
 
 local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
 local_weather_path = "/home/lirola/PROJECT/PORFOLIO/project/common_storage/weather"
@@ -45,10 +47,21 @@ class Runner:
                     print(f"Simulation {sim_name} number: {sim_id} batch: {batch_id}-> COMPLETED")
                     self.update_simulation_status(sim_id,"Completed")
 
+                except (FileNotFoundError, OSError) as e:
+                    # Handle specific file/path problems
+                    print(f"[{sim_id}] File system error during simulation: {e}")
+                    self.update_simulation_status(sim_id, "Failed")
+
+                except subprocess.CalledProcessError as e:
+                    # Handle specific EnergyPlus execution crashes
+                    print(f"[{sim_id}] EnergyPlus binary execution failed: {e}")
+                    self.update_simulation_status(sim_id, "Failed")
+
                 except Exception as e:
-                    print(f"[{sim_id}] Simulation failed with error: {e}")
+                    # Catch-all safeguard for any other unforeseen errors
+                    print(f"[{sim_id}] Simulation failed with unexpected error: {e}")
                     traceback.print_exc()
-                    self.update_simulation_status(sim_id,"Failed")
+                    self.update_simulation_status(sim_id, "Failed")
 
 
     def get_idf(self,idf_path:Path,epw_path:Path)-> IDF:
@@ -66,24 +79,22 @@ class Runner:
 
     def pending_simulation_grabber(self) -> tuple | None:
         "Takes just one simulation with statusn 'pending'"
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """SELECT simulation_id,batch_id,idf_filename,weather FROM simulations
-                    WHERE status_simulation = 'Pending'
-                    OR status_simulation = 'Failed'
-                    LIMIT 1;"""
-                )
-                # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]
-                simulation_to_run = cursor.fetchone()
+        with get_db_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                """SELECT simulation_id,batch_id,idf_filename,weather FROM simulations
+                WHERE status_simulation = 'Pending'
+                OR status_simulation = 'Failed'
+                LIMIT 1;"""
+            )
+            # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]
+            simulation_to_run = cursor.fetchone()
                     
         return simulation_to_run
 
     def update_simulation_status(self,id:int,status:str):
         "Changes the simulaition status"
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """UPDATE simulations SET status_simulation = %s WHERE simulation_id = %s""",
-                    (status, id)
-                )
+        with get_db_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                """UPDATE simulations SET status_simulation = %s WHERE simulation_id = %s""",
+                (status, id)
+            )
