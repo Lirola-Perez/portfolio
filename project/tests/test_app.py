@@ -1,5 +1,5 @@
 import pytest
-from service_ui.main import app, data_preparation
+from main import app, data_preparation
 from fastapi.testclient import TestClient
 import pandas as pd
 

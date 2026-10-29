@@ -27,6 +27,8 @@ jobs:
           pip install pytest httpx
 
       - name: Run test suite
+        env:
+          PYTHONPATH: ./project/service_ui
         run: |
           cd project
           pytest tests/ -v
