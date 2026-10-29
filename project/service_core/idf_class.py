@@ -1,9 +1,7 @@
-import random
-from pathlib import Path
-from psycopg2.extras import Json
-from eppy.modeleditor import IDF
-from postgres_connection import get_db_connection
 import os
+from pathlib import Path
+
+from eppy.modeleditor import IDF
 
 local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
 idd_path = os.getenv("EPLUS_IDD_PATH", local_eplus_path)

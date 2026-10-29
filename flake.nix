@@ -44,6 +44,7 @@
         psycopg2-binary
         flask
         sqlalchemy
+        ruff
 
         (ps.buildPythonPackage rec {
           pname = "eppy";

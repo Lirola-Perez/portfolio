@@ -1,11 +1,12 @@
 import json
 import os
-import psycopg2
 from pathlib import Path
+
+import psycopg2
 from eppy.modeleditor import IDF
 from idf_class import IdfClass
-from psycopg2.extras import Json
 from postgres_connection import get_db_connection
+from psycopg2.extras import Json
 
 # Environment variables (If not set then ./common_storage)
 STORAGE_PATH = Path(os.getenv("STORAGE_PATH", "./common_storage"))
@@ -25,7 +26,7 @@ class IDFManager:
             with open(Path(self.storage_path, "parameter_run.json"), "r") as f:
                 config_data = json.load(f)
                 self.batch_id = self.parse_batch_parameters_to_postgresql(config_data)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             print(f"File 'parameter_run.json' not found in {self.storage_path}.")
 
     def parse_batch_parameters_to_postgresql(self, config_data:dict):
@@ -65,7 +66,7 @@ class IDFManager:
             print(f"General database error: {e}")
             raise
 
-        except Exception as e: # noqa: BLE001 
+        except Exception as e: # noqa: BLE001
             print(f"Error saving results to DB: {e}")
             raise
 

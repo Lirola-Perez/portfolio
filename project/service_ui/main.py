@@ -1,14 +1,15 @@
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+import json
+import os
 from pathlib import Path
-import tensorflow as tf
+from typing import Annotated
+
 import joblib
 import pandas as pd
+import tensorflow as tf
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
-from typing import Annotated
-import os
-import json
 
 # Get the directory where main.py is currently located
 BASE_DIR = Path(__file__).resolve().parent
@@ -96,7 +97,7 @@ async def calculate_prediction(
                 prediction_result = prediction_result.reshape(1, -1)
             prediction_result = scaler_output.inverse_transform(prediction_result)
     else:
-        print(f"FAKE PREDICTION!")
+        print("FAKE PREDICTION!")
         prediction_result = round(form_data.Area * 0.45 + form_data.Height * 0.12, 2)
 
     print(f"{prediction_result}") 
@@ -136,7 +137,7 @@ def use_model():
     except Exception as e:  # noqa: BLE001
         # If TensorFlow throws an unexpected internal C++ runtime exception 
         # that doesn't inherit from standard Python file/value errors, 
-        # use # noqa: BLE001 to safely catch it as a final fallback.
+        # use
         print(f"Unexpected TensorFlow internal error loading model: {e}")
         return None
 

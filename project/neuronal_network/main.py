@@ -1,9 +1,9 @@
-from sklearn.preprocessing import StandardScaler
-from data_preparation import Input
-from core import NeuronalNetwork
-from sklearn.pipeline import make_pipeline
-import joblib
 import os
+
+import joblib
+from core import NeuronalNetwork
+from data_preparation import Input
+from sklearn.preprocessing import StandardScaler
 
 storage_path = os.getenv("STORAGE_PATH", "/common_storage/")
 data = Input()

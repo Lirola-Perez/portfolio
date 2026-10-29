@@ -3,9 +3,9 @@ import subprocess
 import time
 import traceback
 from pathlib import Path
-from postgres_connection import get_db_connection
-from eppy import IDF
 
+from eppy import IDF
+from postgres_connection import get_db_connection
 
 local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
 local_weather_path = "/home/lirola/PROJECT/PORFOLIO/project/common_storage/weather"

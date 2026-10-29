@@ -1,5 +1,6 @@
-import tensorflow as tf
 import os
+
+import tensorflow as tf
 
 storage_path = os.getenv("STORAGE_PATH", "/common_storage/")
 class NeuronalNetwork:

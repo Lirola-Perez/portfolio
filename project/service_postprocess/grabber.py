@@ -1,9 +1,11 @@
 import os
-import psycopg2
-import pandas as pd
-from pathlib import Path
 import sqlite3
+from pathlib import Path
+
+import pandas as pd
+import psycopg2
 from postgres_connection import get_db_connection
+
 
 class SimulationData:
     def __init__(self) -> None:
@@ -26,7 +28,7 @@ class SimulationData:
             all_simulations.append(table)
 
         if not all_simulations:
-            print(f"WARNING: Empty master data table or simulations already 'Processed'!")
+            print("WARNING: Empty master data table or simulations already 'Processed'!")
             return pd.DataFrame()
         
         master_df = pd.concat(all_simulations, axis=0)
@@ -49,7 +51,7 @@ class SimulationData:
             data.to_parquet(file_path,index=False)
             print(f"Master dataset saved successfully at {file_path}")
         else:
-            print(f"No new data.parquet generated.")
+            print("No new data.parquet generated.")
 
     def save_master_aux(self, data:pd.DataFrame):
         if data.any:
@@ -57,7 +59,7 @@ class SimulationData:
             data.to_csv(file_path,index=False)
             print(f"Master dataset saved successfully at {file_path}")
         else:
-            print(f"No new data.csv generated.")
+            print("No new data.csv generated.")
 
 
     def completed_data_grabber(self):

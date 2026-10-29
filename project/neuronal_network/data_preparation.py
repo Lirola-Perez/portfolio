@@ -1,10 +1,10 @@
 
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-import os
-import joblib
 import json
+import os
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
 
 class Input:
     def __init__(self):

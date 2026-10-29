@@ -1,6 +1,8 @@
 import os
-from decorator import contextmanager
+
 import psycopg2
+from decorator import contextmanager
+
 
 # Reading the .env injected by Docker Compose
 @contextmanager
