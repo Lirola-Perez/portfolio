@@ -28,7 +28,7 @@ jobs:
           python -m pip list
           python -m pip install --upgrade pip
           python -m pip install -vr project/service_ui/requirements.txt
-          pip install -v pytest httpx
+          pip install -v pytest httpx ruff
 
       - name: Run Code Linter (Ruff)
         run: |
