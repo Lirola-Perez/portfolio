@@ -21,9 +21,20 @@ def test_data_preparation_logic():
         Target_variable = "Variable_Cooling Zone Temperature [C]"
 
     dummy_columns = [
-        "Area", "Volume", "Thickness", "Conductivity", 
-        "Weather_Madrid", "Weather_Chicago", 
-        "Variable_Cooling Zone Temperature [C]"
+        "Area", 
+        "Volume", 
+        "Thickness", 
+        "Conductivity", 
+        "Weather_Madrid", 
+        "Weather_Potsdam", 
+        "Variable_Cooling Zone Relative Humidity [%]", 
+        "Variable_Cooling Zone Temperature [C]", 
+        "Variable_Des Cool Mass Flow [kg/s]", 
+        "Variable_Des Heat Load [W]", 
+        "Variable_Des Heat Mass Flow [kg/s]", 
+        "Variable_Des Sens Cool Load [W]", 
+        "Variable_Heating Zone Relative Humidity [%]", 
+        "Variable_Heating Zone Temperature [C]"
     ]
 
     form_data = MockForm()
