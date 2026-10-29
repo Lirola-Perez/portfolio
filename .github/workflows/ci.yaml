@@ -32,7 +32,7 @@ jobs:
 
       - name: Run Code Linter (Ruff)
         run: |
-          ruff check project/
+          python -m ruff check project/
 
       - name: Run test suite
         run: |
