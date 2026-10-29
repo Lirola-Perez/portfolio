@@ -1,5 +1,5 @@
 import pytest
-from main import app, data_preparation
+from main import app, data_preparation # type: ignore
 from fastapi.testclient import TestClient
 import pandas as pd
 

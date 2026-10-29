@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from pathlib import Path
 import tensorflow as tf
 import joblib
 import pandas as pd
@@ -8,6 +9,9 @@ from pydantic import BaseModel, Field
 from typing import Annotated
 import os
 import json
+
+# Get the directory where main.py is currently located
+BASE_DIR = Path(__file__).resolve().parent
 
 # 1. Force Pandas to show all columns instead of hiding them with "..."
 pd.set_option('display.max_columns', None)
@@ -49,7 +53,7 @@ else:
     ]
 
 app = FastAPI(title="Energy-Performance Building Simulation Machine Learning Engine")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 class PredictionInput(BaseModel):
     Weather: str
