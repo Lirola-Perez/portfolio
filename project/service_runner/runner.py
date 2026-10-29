@@ -57,7 +57,7 @@ class Runner:
                     print(f"[{sim_id}] EnergyPlus binary execution failed: {e}")
                     self.update_simulation_status(sim_id, "Failed")
 
-                except Exception as e:
+                except Exception as e: # noqa: BLE001
                     # Catch-all safeguard for any other unforeseen errors
                     print(f"[{sim_id}] Simulation failed with unexpected error: {e}")
                     traceback.print_exc()

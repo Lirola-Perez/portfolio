@@ -1,4 +1,5 @@
 import os
+import psycopg2
 import pandas as pd
 from pathlib import Path
 import sqlite3
@@ -62,23 +63,43 @@ class SimulationData:
     def completed_data_grabber(self):
 
         with get_db_connection() as conn, conn.cursor() as cursor:
+            try:
+                # Using UPDATE for update status and retrieve vars
+                # Using FOR UPDATE SKIP LOCKED to avoid conflict with other containers
+                cursor.execute(
+                    """UPDATE simulations SET status_simulation = 'Processed'
+                    WHERE simulation_id = (
+                    SELECT simulation_id FROM simulations 
+                    WHERE status_simulation = 'Completed'
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED)
+                    RETURNING simulation_id,idf_filename,batch_id,parameters_applied;"""
+                )
 
-            # Using UPDATE for update status and retrieve vars
-            # Using FOR UPDATE SKIP LOCKED to avoid conflict with other containers
-            cursor.execute(
-                """UPDATE simulations SET status_simulation = 'Processed'
-                WHERE simulation_id = (
-                SELECT simulation_id FROM simulations 
-                WHERE status_simulation = 'Completed'
-                LIMIT 1
-                FOR UPDATE SKIP LOCKED)
-                RETURNING simulation_id,idf_filename,batch_id,parameters_applied;"""
-            )
+                simulation_row = cursor.fetchone()
 
-            simulation_row = cursor.fetchone()
+                if not simulation_row:
+                    return None
 
-            if not simulation_row:
-                return None
+            except psycopg2.OperationalError as e:
+                # Handles connection drops, network failures, or database down states
+                print(f"Database operational error (connection/timeout): {e}")
+                raise
+
+            except psycopg2.ProgrammingError as e:
+                # Handles syntax errors in your SQL query or missing tables/columns
+                print(f"Database programming error (bad SQL/schema): {e}")
+                raise
+
+            except psycopg2.DatabaseError as e:
+                # Catch-all for any other database-specific errors
+                print(f"General database error: {e}")
+                raise
+
+            except Exception as e: # noqa: BLE001 
+                conn.rollback()  # Rollback if anything goes wrong
+                print(f"Error saving results to DB: {e}")
+                raise 
 
         return simulation_row
 
@@ -106,7 +127,22 @@ class SimulationData:
                     (results_json,),
                 )
 
-            except Exception as e:
+            except psycopg2.OperationalError as e:
+                # Handles connection drops, network failures, or database down states
+                print(f"Database operational error (connection/timeout): {e}")
+                raise
+
+            except psycopg2.ProgrammingError as e:
+                # Handles syntax errors in your SQL query or missing tables/columns
+                print(f"Database programming error (bad SQL/schema): {e}")
+                raise
+
+            except psycopg2.DatabaseError as e:
+                # Catch-all for any other database-specific errors
+                print(f"General database error: {e}")
+                raise
+
+            except Exception as e: # noqa: BLE001 
                 conn.rollback()  # Rollback if anything goes wrong
                 print(f"Error saving results to DB: {e}")
                 raise

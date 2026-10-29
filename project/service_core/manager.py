@@ -1,5 +1,6 @@
 import json
 import os
+import psycopg2
 from pathlib import Path
 from eppy.modeleditor import IDF
 from idf_class import IdfClass
@@ -28,25 +29,45 @@ class IDFManager:
             print(f"File 'parameter_run.json' not found in {self.storage_path}.")
 
     def parse_batch_parameters_to_postgresql(self, config_data:dict):
-        
-        with get_db_connection() as conn, conn.cursor() as cursor:
-            cursor.execute(
-                """INSERT INTO simulation_batches (config_data)
-                VALUES (%s)
-                RETURNING batch_id""",
-                (Json(config_data),),
-            )
-            row = cursor.fetchone()
-            print("Debug - fetchone result:", row)  # Let's see what prints here
 
-            if row is None:
-                raise Exception(
-                    "The INSERT statement did not return a batch_id. Check your table"
-                    " schema."
+        try:
+            with get_db_connection() as conn, conn.cursor() as cursor:
+                cursor.execute(
+                    """INSERT INTO simulation_batches (config_data)
+                    VALUES (%s)
+                    RETURNING batch_id""",
+                    (Json(config_data),),
                 )
+                row = cursor.fetchone()
+                print("Debug - fetchone result:", row)  # Let's see what prints here
 
-            self.batch_id = row[0]
-            return self.batch_id
+                if row is None:
+                    raise Exception(
+                        "The INSERT statement did not return a batch_id. Check your table"
+                        " schema."
+                    )
+
+                self.batch_id = row[0]
+                return self.batch_id
+
+        except psycopg2.OperationalError as e:
+            # Handles connection drops, network failures, or database down states
+            print(f"Database operational error (connection/timeout): {e}")
+            raise
+
+        except psycopg2.ProgrammingError as e:
+            # Handles syntax errors in your SQL query or missing tables/columns
+            print(f"Database programming error (bad SQL/schema): {e}")
+            raise
+
+        except psycopg2.DatabaseError as e:
+            # Catch-all for any other database-specific errors
+            print(f"General database error: {e}")
+            raise
+
+        except Exception as e: # noqa: BLE001 
+            print(f"Error saving results to DB: {e}")
+            raise
 
     def load_config_from_postgresql(self) -> dict:
         '''Connect to PostgresSQL to fetch JSONB config'''
@@ -146,40 +167,58 @@ class IDFManager:
             run_sim["other_values"] = other_values
 
             status = "Pending"
-
-            with get_db_connection() as conn, conn.cursor() as cursor:
-                cursor.execute(
-                    """INSERT INTO simulations (batch_id,idf_filename,weather,status_simulation,parameters_applied)
-                        VALUES (%s,%s,%s,%s,%s)
-                        RETURNING simulation_id;
-                        """,
-                        (self.batch_id,new_idf_name,weather,status,Json(run_sim),),
-                )
-                simulation = cursor.fetchone()
-                # Connection automatic closed
-                if simulation:
-                    simulation_id = simulation[0]
-
+            try:
+                with get_db_connection() as conn, conn.cursor() as cursor:
                     cursor.execute(
-                        """INSERT INTO idf_components (simulation_id,
-                        type_class,
-                        type_name,
-                        property_name,
-                        property_value,
-                        old_property_value,
-                        weather,
-                        other_properties,
-                        other_values) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s);""",
-                        (simulation_id,
-                        type,
-                        type_name,
-                        property,
-                        val,
-                        old_value,
-                        weather,
-                        other_properties,
-                        other_values,),
+                        """INSERT INTO simulations (batch_id,idf_filename,weather,status_simulation,parameters_applied)
+                            VALUES (%s,%s,%s,%s,%s)
+                            RETURNING simulation_id;
+                            """,
+                            (self.batch_id,new_idf_name,weather,status,Json(run_sim),),
                     )
+                    simulation = cursor.fetchone()
+                    # Connection automatic closed
+                    if simulation:
+                        simulation_id = simulation[0]
+
+                        cursor.execute(
+                            """INSERT INTO idf_components (simulation_id,
+                            type_class,
+                            type_name,
+                            property_name,
+                            property_value,
+                            old_property_value,
+                            weather,
+                            other_properties,
+                            other_values) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s);""",
+                            (simulation_id,
+                            type,
+                            type_name,
+                            property,
+                            val,
+                            old_value,
+                            weather,
+                            other_properties,
+                            other_values,),
+                        )
+            except psycopg2.OperationalError as e:
+                # Handles connection drops, network failures, or database down states
+                print(f"Database operational error (connection/timeout): {e}")
+                raise
+    
+            except psycopg2.ProgrammingError as e:
+                # Handles syntax errors in your SQL query or missing tables/columns
+                print(f"Database programming error (bad SQL/schema): {e}")
+                raise
+    
+            except psycopg2.DatabaseError as e:
+                # Catch-all for any other database-specific errors
+                print(f"General database error: {e}")
+                raise
+    
+            except Exception as e: # noqa: BLE001 
+                print(f"Error saving results to DB: {e}")
+                raise
             conn.commit()
 
             new_path = os.path.join(run_folder, new_idf_name + ".idf")
