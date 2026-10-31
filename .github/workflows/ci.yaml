@@ -2,9 +2,9 @@ name: CI pipeline
 
 on:
   push:
-    branches: [ sql_based ]
+    branches: [ master ]
   pull_request:
-    branches: [ sql based ]
+    branches: [ master ]
 
 env:
   REGISTRY: ghcr.io
