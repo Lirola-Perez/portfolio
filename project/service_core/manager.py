@@ -254,7 +254,7 @@ class IDFManager:
 
     def key_filter(self,idf, word:str) -> list:
         key_filtered = []
-        for key in idf.idfobjects.key():
+        for key in idf.idfobjects.keys():
             word_cap = word.upper()
             if key.startswith(word_cap):
                 key_filtered.append(key)

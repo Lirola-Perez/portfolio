@@ -38,6 +38,9 @@ services:
 
   ml-service:
     build: ./neuronal_network
+    depends_on:
+      postgres-db:
+        condition: service_healthy
     environment:
       - PYTHONUNBUFFERED=1
     env_file:

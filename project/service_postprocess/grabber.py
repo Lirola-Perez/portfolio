@@ -67,22 +67,22 @@ class SimulationData:
         try:
             with get_db_connection() as conn, conn.cursor() as cursor:
                 
-                    # Using UPDATE for update status and retrieve vars
-                    # Using FOR UPDATE SKIP LOCKED to avoid conflict with other containers
-                    cursor.execute(
-                        """UPDATE simulations SET status_simulation = 'Processed'
-                        WHERE simulation_id = (
-                        SELECT simulation_id FROM simulations 
-                        WHERE status_simulation = 'Completed'
-                        LIMIT 1
-                        FOR UPDATE SKIP LOCKED)
-                        RETURNING simulation_id,idf_filename,batch_id,parameters_applied;"""
-                    )
+                # Using UPDATE for update status and retrieve vars
+                # Using FOR UPDATE SKIP LOCKED to avoid conflict with other containers
+                cursor.execute(
+                    """UPDATE simulations SET status_simulation = 'Processed'
+                    WHERE simulation_id = (
+                    SELECT simulation_id FROM simulations 
+                    WHERE status_simulation = 'Completed'
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED)
+                    RETURNING simulation_id,idf_filename,batch_id,parameters_applied;"""
+                )
 
-                    simulation_row = cursor.fetchone()
+                simulation_row = cursor.fetchone()
 
-                    if not simulation_row:
-                        return None
+                if not simulation_row:
+                    return None
 
         except psycopg2.OperationalError as e:
             # Handles connection drops, network failures, or database down states
