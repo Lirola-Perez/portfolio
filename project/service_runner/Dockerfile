@@ -9,7 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /usr/local/app
 
-COPY requirements.txt ./
+# Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
+#               specified the paths from that ROOT (PORTFOLIO)
+COPY project/service_runner/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Download and extract the full EnergyPlus engine
@@ -20,7 +22,9 @@ RUN wget -O energyplus.tar.gz https://github.com/NREL/EnergyPlus/releases/downlo
 
 ENV EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
 
-COPY . .
+# Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
+#               specified the paths from that ROOT (PORTFOLIO)
+COPY project/service_runner/ ./
 # internal container port (not public)
 EXPOSE 8002
 

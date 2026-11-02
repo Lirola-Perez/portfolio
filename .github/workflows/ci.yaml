@@ -93,7 +93,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: . # Here is set the ROOT repo (PORTFOLIO) as the ORIGIN (affecting to the Dockerfile's paths)
           file: ${{ matrix.service.path }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}

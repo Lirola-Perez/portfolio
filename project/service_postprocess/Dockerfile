@@ -7,11 +7,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Current active folder for following commands
 WORKDIR /usr/local/app
 
-# Dependencies
-COPY requirements.txt ./
+# Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
+#               specified the paths from that ROOT (PORTFOLIO)
+COPY project/service_postprocess/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
+#               specified the paths from that ROOT (PORTFOLIO)
+COPY project/service_postprocess/ ./
 # internal container port (not public)
 EXPOSE 8003
 
