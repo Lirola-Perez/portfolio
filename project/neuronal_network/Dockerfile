@@ -6,11 +6,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /usr/local/app
 
-COPY ./requirements.txt ./requirements.txt
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy all files and automatic ownership to root
-COPY . ./
+COPY . .
 # internal container port (not public)
 EXPOSE 8004
 

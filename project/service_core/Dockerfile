@@ -9,7 +9,7 @@ WORKDIR /usr/local/app
 
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
-COPY ./requirements.txt ./requirements.txt
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Download ONLY the Energy+.idd schema file directly from GitHub (v23.1.0)
@@ -24,7 +24,7 @@ ENV EPLUS_IDD_PATH=/app/assets/Energy+.idd
 
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
-COPY . ./
+COPY . .
 # internal container port (not public)
 EXPOSE 8001
 

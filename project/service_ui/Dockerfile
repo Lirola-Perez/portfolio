@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /usr/local/app
 
-COPY ./requirements.txt ./requirements.txt
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . ./
+COPY . .
 
 RUN useradd app
 USER app
