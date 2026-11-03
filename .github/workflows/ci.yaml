@@ -59,15 +59,15 @@ jobs:
       matrix:
         service:
           - name: service_runner
-            path: project/service_runner/Dockerfile
+            path: project/service_runner/
           - name: service_ui
-            path: project/service_ui/Dockerfile
+            path: project/service_ui/
           - name: service_core
-            path: project/service_core/Dockerfile
+            path: project/service_core/
           - name: service_postprocess
-            path: project/service_postprocess/Dockerfile
+            path: project/service_postprocess/
           - name: neuronal_network
-            path: project/neuronal_network/Dockerfile
+            path: project/neuronal_network/
 
     permissions:
       contents: read
@@ -96,8 +96,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: . # Here is set the ROOT repo (PORTFOLIO) as the ORIGIN (affecting to the Dockerfile's paths)
-          file: ${{ matrix.service.path }}
+          context: ${{ matrix.service.path }} # <- Here points as the ORIGIN (each services as in the docker-compose.yml)
+          file: ${{ matrix.service.path }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
