@@ -9,13 +9,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /usr/local/app
 
-COPY project/service_ui/requirements.txt ./requirements.txt
+COPY ./requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY project/service_ui/ ./
+COPY . ./
 
 RUN useradd app
 USER app
 
 # --host 0.0.0.0 opening to requests, port 8000
-CMD [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000" ]
+CMD [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000" ]

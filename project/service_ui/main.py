@@ -2,6 +2,8 @@ import json
 import os
 from pathlib import Path
 from typing import Annotated
+from supabase import Client, create_client
+from dotenv import load_dotenv
 
 import joblib
 import pandas as pd
@@ -29,6 +31,14 @@ model_path = os.path.join(storage_path,"model.keras")
 scaler_input_path = os.path.join(storage_path,"scaler_x.pkl")
 scaler_output_path = os.path.join(storage_path,"scaler_y.pkl")
 columns_path = os.path.join(output_path,"column_list.json")
+
+load_dotenv()
+
+# 1. Initialize Supabase using your environment variables
+supabase: Client = create_client(
+    os.environ.get("SUPABASE_URL"),
+    os.environ.get("SUPABASE_KEY")
+)
 
 # CONDITIONAL: used for handle CI Pipeline tests 
 if os.path.exists(columns_path):
@@ -66,7 +76,8 @@ class PredictionInput(BaseModel):
     
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
-    return templates.TemplateResponse(request=request,name="index.html",context={"request":request, "prediction":None})
+    html = templates.TemplateResponse(request=request,name="index.html",context={"request":request, "prediction":None})
+    return html
 
 @app.post("/", response_class=HTMLResponse)
 async def calculate_prediction(

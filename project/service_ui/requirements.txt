@@ -9,3 +9,5 @@ pyarrow
 psycopg2-binary
 scikit-learn
 tensorflow
+python-dotenv
+supabase
