@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import uuid
 
 import psycopg2
 from eppy.modeleditor import IDF
@@ -14,10 +15,12 @@ OUTPUT_PATH = Path(os.getenv("OUTPUT_PATH", "/common_storage/output"))
 IDF_PATH = Path(os.getenv("IDF_PATH", "/common_storage/idf_files"))
 WEATHER_PATH = Path(os.getenv("WEATHER_PATH", "/common_storage/weather"))
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 class IDFManager:
 
     def __init__(self):
-        self.storage_path = STORAGE_PATH
+        self.storage_path = os.path.join(STORAGE_PATH, "parameters")
         self.output_path = OUTPUT_PATH
         self.idf_files_path = IDF_PATH
         self.idf_weather_path = WEATHER_PATH
@@ -33,6 +36,7 @@ class IDFManager:
 
         try:
             with get_db_connection() as conn, conn.cursor() as cursor:
+
                 cursor.execute(
                     """INSERT INTO simulation_batches (config_data)
                     VALUES (%s)

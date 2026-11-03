@@ -5,11 +5,9 @@ from decorator import contextmanager
 
 # Reading the .env injected by Docker Compose
 @contextmanager
-def get_db_connection(database_connect="None"):
+def get_db_connection(database_connect=None):
     # 1. Choose whether to use an explicit connection string or individual env vars
     if database_connect and database_connect != "value":
-        conn = psycopg2.connect(database_connect)
-    else:
         conn = psycopg2.connect(
             host=os.getenv("DB_HOST", "postgres-db"),
             database=os.getenv("DATABASE_NAME"),
@@ -17,6 +15,11 @@ def get_db_connection(database_connect="None"):
             password=os.getenv("DATABASE_PASSWORD"),
             port=os.getenv("DB_PORT", "5432")
         )
+    else:
+        DATABASE_URL = os.getenv("DATABASE_URL")
+        if not DATABASE_URL:
+            raise ValueError("DATABASE_URL environment variable missing")
+        conn = psycopg2.connect(DATABASE_URL)
     # Execution
     try:
         yield conn

@@ -8,7 +8,7 @@ services:
       postgres-db:
         condition: service_healthy
     env_file:
-      - ../.env # Points the main folder
+      - .env # Points the main folder
     environment:
       - DATABASE_URL=${DATABASE_URL}
     volumes:
@@ -20,7 +20,7 @@ services:
       postgres-db:
         condition: service_healthy
     env_file:
-      - ../.env # Points the main folder
+      - .env # Points the main folder
     environment:
       - CORE_SERVICE_PATH=http://core-service:8001
     # Mounting volume for commoon files
@@ -33,7 +33,7 @@ services:
       postgres-db:
         condition: service_healthy
     env_file:
-      - ../.env # Points the main folder
+      - .env # Points the main folder
     # Mounting volume for commoon files
     volumes:
       - ./common_storage:/app/storage
@@ -46,7 +46,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     env_file:
-      - ../.env # Points the main folder
+      - .env # Points the main folder
     # Mounting volume for commoon files
     volumes:
       - ./common_storage:/app/storage
@@ -58,7 +58,7 @@ services:
       postgres-db:
         condition: service_healthy
     env_file:
-      - ../.env # Points the main folder
+      - .env # Points the main folder
     ports:
       - "2001:8000" # localhost=2001 
     environment:
@@ -75,11 +75,12 @@ services:
     image: postgres:15-alpine
     container_name: postgres_db
     env_file:
-      - ../.env # Points the main folder
+      - .env # Points the main folder
     environment:
       - POSTGRES_USER=${DATABASE_USER}
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRES_DB=${DATABASE_NAME}
+      - DATABASE_URL=${DATABASE_URL}
     ports:
       - 127.0.0.1:5432:5432
     volumes:
