@@ -9,6 +9,8 @@ services:
         condition: service_healthy
     env_file:
       - ../.env # Points the main folder
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
     volumes:
       - ./common_storage:/app/storage # host_storage(laptop);container_storage
 

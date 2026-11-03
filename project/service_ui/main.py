@@ -109,7 +109,7 @@ async def calculate_prediction(
         print("FAKE PREDICTION!")
         prediction_result = round(form_data.Area * 0.45 + form_data.Height * 0.12, 2)
 
-    print(f"{prediction_result}") 
+    print(f"{prediction_result}")
 
     return templates.TemplateResponse(request=request,name="index.html",context={
         "Request": request,
