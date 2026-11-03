@@ -41,6 +41,9 @@ jobs:
           python -m ruff check project/ --fix --show-fixes
 
       - name: Run test suite
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd project
           pytest tests/ -v

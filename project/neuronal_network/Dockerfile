@@ -6,11 +6,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /usr/local/app
 
-COPY project/neuronal_network/requirements.txt ./requirements.txt
+COPY ./requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy all files and automatic ownership to root
-COPY project/neuronal_network/ ./
+COPY . ./
 # internal container port (not public)
 EXPOSE 8004
 

@@ -1,10 +1,17 @@
 import pandas as pd
 from fastapi.testclient import TestClient
 from main import app, data_preparation  # type: ignore
+from supabase import Client, create_client
+import os
 
 client = TestClient(app)
 
-def test_read_incdex():
+SUPABASE_URL = os.getenv("SUPABASE_URL", "Missing_SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "Missing_SUPABASE_KEY")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def test_read_index():
     response = client.get("/")
     assert response.status_code == 200
     assert "Energy Model Prediction" in response.text

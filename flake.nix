@@ -45,6 +45,9 @@
         flask
         sqlalchemy
         ruff
+        supabase
+        python-dotenv
+        python-multipart
 
         (ps.buildPythonPackage rec {
           pname = "eppy";

@@ -26,6 +26,7 @@ result-*
 # --- VS Code ---
 # Wir ignorieren den lokalen Workspace-Status, 
 # aber behalten (optional) die Empfehlungen.
+.vscode
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -47,6 +48,7 @@ datasets/
 # --- OS / System ---
 .DS_Store
 Thumbs.db
+.ruff_cache
 
 *.pdf
 *.odt#

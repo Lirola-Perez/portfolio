@@ -9,12 +9,12 @@ WORKDIR /usr/local/app
 
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
-COPY project/service_postprocess/requirements.txt ./requirements.txt
+COPY ./requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
-COPY project/service_postprocess/ ./
+COPY . ./
 # internal container port (not public)
 EXPOSE 8003
 
