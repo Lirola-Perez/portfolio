@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from typing import Annotated
 from supabase import Client, create_client
-from dotenv import load_dotenv
 
 import joblib
 import pandas as pd
@@ -25,20 +24,19 @@ pd.set_option('display.width', 1000)
 # 3. (Optional) Show all rows if it's cutting off vertically too
 pd.set_option('display.max_rows', None)
 
-storage_path = os.getenv("STORAGE_PATH", "/common_storage/")
-output_path = os.getenv("OUTPUT_PATH", "/common_storage/output")
-model_path = os.path.join(storage_path,"model.keras")
-scaler_input_path = os.path.join(storage_path,"scaler_x.pkl")
-scaler_output_path = os.path.join(storage_path,"scaler_y.pkl")
-columns_path = os.path.join(output_path,"column_list.json")
+STORAGE_PATH = os.getenv("STORAGE_PATH", "/common_storage/")
+OUTPUT_PATH = os.getenv("OUTPUT_PATH", "/common_storage/output")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "Missing_SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "Missing_SUPABASE_KEY")
 
-load_dotenv()
+model_path = os.path.join(STORAGE_PATH,"model.keras")
+scaler_input_path = os.path.join(STORAGE_PATH,"scaler_x.pkl")
+scaler_output_path = os.path.join(STORAGE_PATH,"scaler_y.pkl")
+columns_path = os.path.join(OUTPUT_PATH,"column_list.json")
+
 
 # 1. Initialize Supabase using your environment variables
-supabase: Client = create_client(
-    os.environ.get("SUPABASE_URL"),
-    os.environ.get("SUPABASE_KEY")
-)
+supabase: Client = create_client(supabase_url=SUPABASE_URL, supabase_key=SUPABASE_KEY)
 
 # CONDITIONAL: used for handle CI Pipeline tests 
 if os.path.exists(columns_path):
@@ -133,7 +131,7 @@ def use_model():
         return None
     
     try:
-        model = tf.keras.models.load_model(os.path.join(storage_path, 'model.keras'))
+        model = tf.keras.models.load_model(os.path.join(STORAGE_PATH, 'model.keras'))
         print(f"Model successfully loaded from {model_path}.")
         return model
     
