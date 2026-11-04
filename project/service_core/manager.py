@@ -32,14 +32,15 @@ class IDFManager:
         # self.idf_files_path = IDF_PATH
         # self.idf_weather_path = WEATHER_PATH
 
-        self.parameters_bucket = "parameters"
-        self.idfs_bucket = "idf_files"
+        self.parameters_bucket = 'parameters'
+        self.idfs_bucket = "idf-files"
         self.weather_bucket = "weather"
         self.output_bucket = "output"
-        parameters_name = "parameter_run.json"
+        parameters_name = 'parameter_run.json'
 
         try:
             self.storage_path = supabase.storage
+            print(self.storage_path)
             self.output_path = self.storage_path.from_(self.output_bucket)
             self.weather_file_binary = self.storage_path.from_(self.weather_bucket)
             self.idf_files_path = self.storage_path.from_(self.idfs_bucket)
@@ -47,12 +48,18 @@ class IDFManager:
             print(f"Folders in SupaBase storage missing {self.idfs_bucket}, {self.weather_bucket}, {self.output_bucket}: Exception: {e}")
 
         try:
-            config_data = cast(dict, supabase.storage.from_(self.parameters_bucket).download(parameters_name))
-            # with open(Path(self.storage_path, "parameter_run.json"), "r") as f:
-            #     config_data = json.load(f)
-            self.batch_id = self.parse_batch_parameters_to_postgresql(config_data)
+            config_data = self.storage_path.from_(self.parameters_bucket).download(parameters_name)
+            # Temporary directory for dealing with the IDF and EPW data files
+            temp_dir = tempfile.mkdtemp()
+            temp_file = Path(temp_dir, "parameter_run.json")
+            with open(temp_file, "wb") as f:
+                f.write(config_data)
+
+            with open(temp_file, "r") as f:
+                config_data = json.load(f)
+                self.batch_id = self.parse_batch_parameters_to_postgresql(config_data)
+
         except FileNotFoundError:
-            #print(f"File 'parameter_run.json' not found in {self.storage_path}.")
             print(f"File 'parameter_run.json' not found in SupaBase.")
 
     def parse_batch_parameters_to_postgresql(self, config_data:dict):
@@ -130,6 +137,8 @@ class IDFManager:
 
             idf_name = sim["idf_file"]
             weather_name = sim["weather"]
+
+            print(idf_name)
 
             # look for that file in the common_storage volume
             idf_file_binary = self.idf_files_path.download(f"{idf_name}.idf")
@@ -264,11 +273,17 @@ class IDFManager:
             with tempfile.TemporaryDirectory() as temp_dir:
                 dir_filename = os.path.join(new_idf_name, new_idf_name + ".idf")
                 new_path = os.path.join(temp_dir, dir_filename)
+
+                # Creating the local subfolder inside temp_dir if it doesn't exist
+                os.makedirs(os.path.dirname(new_path), exist_ok=True)
+                # and now saving it.
                 idf_file.saveas(new_path)
                 # taking the IDF from the temp dir and saving in SupaBase
                 with open(new_path, 'rb') as f:
-                    supabase.storage.from_(self.output_bucket).upload(dir_filename, f)
-
+                    self.storage_path.from_(self.output_bucket).upload(
+                        path=dir_filename,
+                        file=f,
+                        file_options={"upsert": "true"})
 
     def set_idf_info(self,idf:IDF,output_list:list):
 

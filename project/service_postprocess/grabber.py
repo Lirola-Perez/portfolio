@@ -108,7 +108,7 @@ class SimulationData:
     def result_data_grabber(self,results:pd.DataFrame):
 
         results_json = results.to_json(orient="records")
-        print(results_json)
+        #print(results_json)
 
         try:
             with get_db_connection() as conn, conn.cursor() as cursor:
@@ -157,7 +157,7 @@ class SimulationData:
         if simulation_data:
             _,folder_name,_,parameters = simulation_data
             outpath_csv = self.get_file_output_path(folder_name,"epluszsz.csv")
-            print(outpath_csv)
+            #print(outpath_csv)
             property = str
             long_result = pd.DataFrame()
             if outpath_csv:
@@ -215,7 +215,7 @@ class SimulationData:
                 long_result = self.preparing_table(long_result,all_properties)
 
                 long_result.to_csv(os.path.join(self.output_path,folder_name, 'epluszsz_mod.csv'), index=False)
-            print(long_result)
+            #print(long_result)
         return long_result
 
     def preparing_table(self,table, all_properties):
