@@ -64,6 +64,7 @@ else:
 app = FastAPI(title="Energy-Performance Building Simulation Machine Learning Engine")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+# Needed form for calculations
 class PredictionInput(BaseModel):
     Weather: str
     Target_variable: str
@@ -80,23 +81,24 @@ async def root(request: Request):
 @app.post("/", response_class=HTMLResponse)
 async def calculate_prediction(
     request: Request,
-    # 2. FastAPI automatically maps the HTML form data into your Pydantic model!
+    # FastAPI automatically maps the HTML form data into the pydantic model.
     form_data: Annotated[PredictionInput, Form()]
 ):
-    # Pydantic has already validated that Area and volume are valid floats > 0
-    # You can access them cleanly using dot notation: form_data.Area
-    
+    # Pydantic validates Area and volume are valid floats > 0
     volume = form_data.Area * form_data.Height
 
-    print(training_columns)
+    # Taking the selected input vector for the prediction
     data_input = data_preparation(form_data,volume,columns_order=training_columns)
-    print(data_input)
+    #print(data_input)
+    #print(training_columns)
 
+    # Applying the trained scalers:
     scaler_input = joblib.load(scaler_input_path) if os.path.exists(scaler_input_path) else None
     scaler_output = joblib.load(scaler_output_path) if os.path.exists(scaler_output_path) else None
     if scaler_input:
         data_input = scaler_input.transform(data_input)
-    print(data_input)
+
+    # Applying the trained model:
     model = use_model()
     if model:
         prediction_result = model.predict(data_input)[0]
@@ -111,6 +113,7 @@ async def calculate_prediction(
 
     print(f"{prediction_result}")
 
+    # Returning the prediction from the model:
     return templates.TemplateResponse(request=request,name="index.html",context={
         "Request": request,
         "Prediction": prediction_result,
@@ -125,7 +128,7 @@ async def calculate_prediction(
     })
 
 def use_model():
-
+    """This function gathers the trained model ready to use for predictions."""
     if not os.path.exists(model_path):
         print(f"No model found at {model_path}. Please train or upload one first.")
         return None
@@ -151,7 +154,9 @@ def use_model():
         return None
 
 def data_preparation(form_data:Annotated, volume:float, columns_order=training_columns):
-
+    """This function maps and prepares the input data for the model.
+        The data should be a vector with same dimension as the training
+        set of the model."""
     feature_dict = {col: 0.0 for col in list(columns_order)}
 
     if "Area" in feature_dict:

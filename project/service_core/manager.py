@@ -1,36 +1,59 @@
 import json
 import os
 from pathlib import Path
-import uuid
+from typing import cast
 
 import psycopg2
 from eppy.modeleditor import IDF
 from idf_class import IdfClass
 from postgres_connection import get_db_connection
 from psycopg2.extras import Json
+from supabase import Client,create_client
+import tempfile
 
 # Environment variables (If not set then ./common_storage)
-STORAGE_PATH = Path(os.getenv("STORAGE_PATH", "./common_storage"))
-OUTPUT_PATH = Path(os.getenv("OUTPUT_PATH", "/common_storage/output"))
-IDF_PATH = Path(os.getenv("IDF_PATH", "/common_storage/idf_files"))
-WEATHER_PATH = Path(os.getenv("WEATHER_PATH", "/common_storage/weather"))
+# STORAGE_PATH = Path(os.getenv("STORAGE_PATH", "./common_storage"))
+# OUTPUT_PATH = Path(os.getenv("OUTPUT_PATH", "/common_storage/output"))
+# IDF_PATH = Path(os.getenv("IDF_PATH", "/common_storage/idf_files"))
+# WEATHER_PATH = Path(os.getenv("WEATHER_PATH", "/common_storage/weather"))
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Initialize Supabase Client
+SUPABASE_URL: str = os.getenv("SUPABASE_URL") #type: ignore
+SUPABASE_KEY: str = os.getenv("SUPABASE_KEY") #type: ignore
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 class IDFManager:
 
     def __init__(self):
-        self.storage_path = os.path.join(STORAGE_PATH, "parameters")
-        self.output_path = OUTPUT_PATH
-        self.idf_files_path = IDF_PATH
-        self.idf_weather_path = WEATHER_PATH
+        #self.storage_path = os.path.join(STORAGE_PATH, "parameters")
+        # self.output_path = OUTPUT_PATH
+        # self.idf_files_path = IDF_PATH
+        # self.idf_weather_path = WEATHER_PATH
+
+        self.parameters_bucket = "parameters"
+        self.idfs_bucket = "idf_files"
+        self.weather_bucket = "weather"
+        self.output_bucket = "output"
+        parameters_name = "parameter_run.json"
 
         try:
-            with open(Path(self.storage_path, "parameter_run.json"), "r") as f:
-                config_data = json.load(f)
-                self.batch_id = self.parse_batch_parameters_to_postgresql(config_data)
+            self.storage_path = supabase.storage
+            self.output_path = self.storage_path.from_(self.output_bucket)
+            self.weather_file_binary = self.storage_path.from_(self.weather_bucket)
+            self.idf_files_path = self.storage_path.from_(self.idfs_bucket)
+        except Exception as e:
+            print(f"Folders in SupaBase storage missing {self.idfs_bucket}, {self.weather_bucket}, {self.output_bucket}: Exception: {e}")
+
+        try:
+            config_data = cast(dict, supabase.storage.from_(self.parameters_bucket).download(parameters_name))
+            # with open(Path(self.storage_path, "parameter_run.json"), "r") as f:
+            #     config_data = json.load(f)
+            self.batch_id = self.parse_batch_parameters_to_postgresql(config_data)
         except FileNotFoundError:
-            print(f"File 'parameter_run.json' not found in {self.storage_path}.")
+            #print(f"File 'parameter_run.json' not found in {self.storage_path}.")
+            print(f"File 'parameter_run.json' not found in SupaBase.")
 
     def parse_batch_parameters_to_postgresql(self, config_data:dict):
 
@@ -109,12 +132,23 @@ class IDFManager:
             weather_name = sim["weather"]
 
             # look for that file in the common_storage volume
-            idf_file_path = self.idf_files_path / f"{idf_name}.idf"
-            weather_path = self.idf_weather_path / f"weather/{weather_name}.epw"
+            idf_file_binary = self.idf_files_path.download(f"{idf_name}.idf")
+            weather_file_binary = self.weather_file_binary.download(f"{weather_name}.epw")
+
+            # Temporary directory for dealing with the IDF and EPW data files
+            temp_dir = tempfile.mkdtemp()
+            idf_file_path = os.path.join(temp_dir,f"{idf_name}.idf")
+            weather_file_path = os.path.join(temp_dir,f"{weather_name}.epw")
+
+            with open(idf_file_path, "wb") as f:
+                f.write(idf_file_binary)
+
+            with open(weather_file_path, "wb") as f:
+                f.write(weather_file_binary)
 
             # --- CREATING THE IDF CLASS --------
             idf = IdfClass()        
-            idf_file = idf.get_idf(idf_file_path,weather_path)
+            idf_file = idf.get_idf(Path(idf_file_path),Path(weather_file_path))
             # -----------------------------------
             # Setting general simulation common configuration
             # Simulation config // output variables
@@ -134,8 +168,10 @@ class IDFManager:
         
         for val in property_values:
 
-            run_folder = Path(f"{self.output_path}/{idf_name}_{weather}_{property}_{val}")
-            run_folder.mkdir(parents=True, exist_ok=True)
+            # run_folder = Path(f"{self.output_path}/{idf_name}_{weather}_{property}_{val}")
+            # run_folder.mkdir(parents=True, exist_ok=True)
+
+            new_idf_name = f"{idf_name}_{weather}_{property}_{val}"
 
             other_properties = [p for p in all_properties if p != property]
             print(other_properties)
@@ -145,8 +181,7 @@ class IDFManager:
             run_sim["other_properties"] = other_properties
             # Include value changed from this idf
             run_sim["property_value"] = val
-            
-            new_idf_name = f"{idf_name}_{weather}_{property}_{val}"
+            # Include the new name
             run_sim["modified_idf_name"] = new_idf_name
 
             # transformation: --------------
@@ -225,8 +260,15 @@ class IDFManager:
                 print(f"Error saving results to DB: {e}")
                 raise
 
-            new_path = os.path.join(run_folder, new_idf_name + ".idf")
-            idf_file.saveas(new_path)
+            # Creating a temporary directory and saving IDF temporary in it:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                dir_filename = os.path.join(new_idf_name, new_idf_name + ".idf")
+                new_path = os.path.join(temp_dir, dir_filename)
+                idf_file.saveas(new_path)
+                # taking the IDF from the temp dir and saving in SupaBase
+                with open(new_path, 'rb') as f:
+                    supabase.storage.from_(self.output_bucket).upload(dir_filename, f)
+
 
     def set_idf_info(self,idf:IDF,output_list:list):
 
@@ -258,10 +300,10 @@ class IDFManager:
 
     def key_filter(self,idf, word:str) -> list:
         key_filtered = []
-        for key in idf.idfobjects:
+        for SUPABASE_KEY in idf.idfobjects:
             word_cap = word.upper()
-            if key.startswith(word_cap):
-                key_filtered.append(key)
+            if SUPABASE_KEY.startswith(word_cap):
+                key_filtered.append(SUPABASE_KEY)
         return key_filtered
 
     def output_object_generator(self,idf,output_list:list):
