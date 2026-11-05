@@ -11,12 +11,6 @@ from psycopg2.extras import Json
 from supabase import Client,create_client
 import tempfile
 
-# Environment variables (If not set then ./common_storage)
-# STORAGE_PATH = Path(os.getenv("STORAGE_PATH", "./common_storage"))
-# OUTPUT_PATH = Path(os.getenv("OUTPUT_PATH", "/common_storage/output"))
-# IDF_PATH = Path(os.getenv("IDF_PATH", "/common_storage/idf_files"))
-# WEATHER_PATH = Path(os.getenv("WEATHER_PATH", "/common_storage/weather"))
-
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Initialize Supabase Client
@@ -27,10 +21,6 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 class IDFManager:
 
     def __init__(self):
-        #self.storage_path = os.path.join(STORAGE_PATH, "parameters")
-        # self.output_path = OUTPUT_PATH
-        # self.idf_files_path = IDF_PATH
-        # self.idf_weather_path = WEATHER_PATH
 
         self.parameters_bucket = 'parameters'
         self.idfs_bucket = "idf-files"

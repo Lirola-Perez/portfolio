@@ -7,7 +7,7 @@ from decorator import contextmanager
 @contextmanager
 def get_db_connection(database_connect=None):
     # 1. Choose whether to use an explicit connection string or individual env vars
-    if database_connect and database_connect != "value":
+    if database_connect:
         conn = psycopg2.connect(
             host=os.getenv("DB_HOST", "postgres-db"),
             database=os.getenv("DATABASE_NAME"),
