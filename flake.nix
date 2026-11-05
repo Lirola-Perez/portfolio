@@ -48,7 +48,7 @@
         supabase
         python-dotenv
         python-multipart
-
+        
         (ps.buildPythonPackage rec {
           pname = "eppy";
           version = "0.5.68";
@@ -84,6 +84,9 @@
           pandoc
           texliveMedium
           chromium
+          terraform
+          google-cloud-sdk
+          kubernetes
         ];
 
         # Runs automatically the moment of typing 'nix develop'

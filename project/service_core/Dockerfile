@@ -25,7 +25,7 @@ ENV EPLUS_IDD_PATH=/app/assets/Energy+.idd
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
 COPY . .
-# internal container port (not public)
+# internal container port, informative
 EXPOSE 8001
 
 # User (not root)

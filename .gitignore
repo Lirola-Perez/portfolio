@@ -67,3 +67,16 @@ output/
 
 # -- Nix configuration --
 flake.*
+
+# -- Terraform (Google Cloud) --
+# Local .terraform directories
+.terraform/
+.terraform.lock.*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Exclude tfvars files containing secrets (keep sample templates tracked if safe)
+terraform.tfvars
+*.auto.tfvars
