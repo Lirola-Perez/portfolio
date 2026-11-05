@@ -13,26 +13,6 @@ provider "google" {
   region  = var.gcp_region
 }
 
-variable "gcp_project_id" {
-  type    = string
-  default = "project-344bc86d-021e-42d7-a72"
-}
-
-variable "gcp_region" {
-  type    = string
-  default = "europe-west1"
-}
-
-variable "supabase_url" {
-  type      = string
-  sensitive = true
-}
-
-variable "supabase_service_role_key" {
-  type      = string
-  sensitive = true
-}
-
 # Fetch the project number dynamically
 data "google_project" "project" {
   project_id = var.gcp_project_id
@@ -44,6 +24,7 @@ resource "google_project_iam_member" "cloud_run_artifact_registry" {
   role    = "roles/artifactregistry.reader"
   member  = "serviceAccount:service-${data.google_project.project.number}@serverless-robot-prod.iam.gserviceaccount.com"
 }
+
 
 # the 5 microservices pointing to GHCR artifacts (GitHub)
 locals {
@@ -63,6 +44,10 @@ resource "google_cloud_run_v2_service" "services" {
   location = var.gcp_region
   ingress  = "INGRESS_TRAFFIC_ALL"
 
+  depends_on = [
+    google_artifact_registry_repository.cache
+  ]
+
   template {
     scaling {
       min_instance_count = 0
@@ -70,7 +55,7 @@ resource "google_cloud_run_v2_service" "services" {
     }
 
     containers {
-      image = each.value
+      image = "europe-west1-docker.pkg.dev/${var.gcp_project_id}/cache/${each.value}"
 
       env {
         name  = "SUPABASE_URL"
