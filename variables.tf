@@ -1,24 +1,35 @@
 variable "gcp_project_id" {
-  type    = string
-  default = "project-344bc86d-021e-42d7-a72"
+  description = "Assignated name of the project in the Google Cloud Provider"
+  type        = string
+  default     = "project-344bc86d-021e-42d7-a72"
 }
 
 variable "gcp_region" {
-  type    = string
-  default = "europe-west1"
+  description = "Selected region for the Cloud Google Provider"
+  type        = string
+  default     = "europe-west1"
 }
 
 variable "supabase_url" {
-  type      = string
-  sensitive = true
+  description = "General URL value for the SUPABASE - backend service"
+  type        = string
+  sensitive   = true
 }
 
 variable "supabase_service_role_key" {
-  type      = string
-  sensitive = true
+  description = "Key value for connecting with the database SUPABASE"
+  type        = string
+  sensitive   = true
 }
 
 variable "github_pat" {
-  type      = string
-  sensitive = true
+  description = "Personal Token for connecting with the GitHub repository"
+  type        = string
+  sensitive   = true
+}
+
+variable "database_url" {
+  description = "Connection to the database SUPABASE - backend service"
+  type        = string
+  sensitive   = true
 }

@@ -66,6 +66,11 @@ resource "google_cloud_run_v2_service" "services" {
         value = var.supabase_service_role_key
       }
 
+      env {
+        name  = "DATABASE_URL"
+        value = var.database_url
+      }
+
       resources {
         limits = {
           cpu    = "1000m"
