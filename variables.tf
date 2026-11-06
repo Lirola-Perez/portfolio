@@ -33,3 +33,27 @@ variable "database_url" {
   type        = string
   sensitive   = true
 }
+
+variable "storage_path" {
+  description = "Container path to storage"
+  type        = string
+  sensitive   = true
+}
+
+variable "weather_path" {
+  description = "Container path to weather files"
+  type        = string
+  sensitive   = true
+}
+
+variable "output_path" {
+  description = "Container path to output files"
+  type        = string
+  sensitive   = true
+}
+
+variable "idf_path" {
+  description = "Container path to idf files"
+  type        = string
+  sensitive   = true
+}

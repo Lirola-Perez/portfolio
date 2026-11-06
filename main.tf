@@ -71,6 +71,26 @@ resource "google_cloud_run_v2_service" "services" {
         value = var.database_url
       }
 
+      env {
+        name  = "STORAGE_PATH"
+        value = var.storage_path
+      }
+
+      env {
+        name  = "WEATHER_PATH"
+        value = var.weather_path
+      }
+
+      env {
+        name  = "OUTPUT_PATH"
+        value = var.output_path
+      }
+
+      env {
+        name  = "IDF_PATH"
+        value = var.idf_path
+      }
+
       resources {
         limits = {
           cpu    = "1000m"
