@@ -13,25 +13,26 @@ variable "gcp_region" {
 variable "storage_path" {
   description = "Container path to storage"
   type        = string
-  default     = "/app/storage"
+  default     = "https://kunmisvoxlxoymtxelth.storage.supabase.co/storage/v1/s3"
+  #default     = "/app/storage"
 }
 
 variable "weather_path" {
   description = "Container path to weather files"
   type        = string
-  default     = "/app/storage/weather"
+  default     = "weather"
 }
 
 variable "output_path" {
   description = "Container path to output files"
   type        = string
-  default     = "/app/storage/output"
+  default     = "output"
 }
 
 variable "idf_path" {
   description = "Container path to idf files"
   type        = string
-  default     = "/app/storage/idf_files"
+  default     = "idf-files"
 }
 
 variable "supabase_url" {

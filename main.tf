@@ -78,17 +78,17 @@ resource "google_cloud_run_v2_service" "services" {
 
       env {
         name  = "WEATHER_PATH"
-        value = var.weather_path
+        value = "${var.storage_path}/${var.weather_path}"
       }
 
       env {
         name  = "OUTPUT_PATH"
-        value = var.output_path
+        value = "${var.storage_path}/${var.output_path}"
       }
 
       env {
         name  = "IDF_PATH"
-        value = var.idf_path
+        value = "${var.storage_path}/${var.idf_path}"
       }
 
       resources {
