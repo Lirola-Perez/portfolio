@@ -29,5 +29,3 @@ def get_db_connection(database_connect=None):
         raise
     finally:
         conn.close()
-
-    return conn

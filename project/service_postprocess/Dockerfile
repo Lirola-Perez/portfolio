@@ -22,4 +22,4 @@ EXPOSE 8003
 RUN useradd app
 USER app
 
-CMD [ "python", "main.py" ]
+CMD [ "python", "main.py"]
