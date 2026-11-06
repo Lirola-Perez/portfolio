@@ -62,7 +62,7 @@ resource "google_cloud_run_v2_service" "services" {
         value = var.supabase_url
       }
       env {
-        name  = "SUPABASE_SERVICE_ROLE_KEY"
+        name  = "SUPABASE_KEY"
         value = var.supabase_service_role_key
       }
 
@@ -74,7 +74,7 @@ resource "google_cloud_run_v2_service" "services" {
       resources {
         limits = {
           cpu    = "1000m"
-          memory = "512Mi"
+          memory = "1Gi"
         }
       }
     }
