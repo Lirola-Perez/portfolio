@@ -34,7 +34,7 @@ class IDFManager:
             self.output_path = self.storage_path.from_(self.output_bucket)
             self.weather_file_binary = self.storage_path.from_(self.weather_bucket)
             self.idf_files_path = self.storage_path.from_(self.idfs_bucket)
-        except Exception as e:
+        except Exception as e: # noqa: BLE001
             print(f"Folders in SupaBase storage missing {self.idfs_bucket}, {self.weather_bucket}, {self.output_bucket}: Exception: {e}")
 
         try:
