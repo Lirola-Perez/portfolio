@@ -9,8 +9,11 @@ from supabase import Client, create_client
 from eppy import IDF
 from postgres_connection import get_db_connection
 
-local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
-local_weather_path = "/home/lirola/PROJECT/PORFOLIO/project/common_storage/weather"
+#local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
+#local_weather_path = "/home/lirola/PROJECT/PORFOLIO/project/common_storage/weather"
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+EPLUS_IDD_PATH = os.getenv("EPLUS_IDD_PATH","/usr/local/EnergyPlus-23.1.0/")
 
 SUPABASE_URL: str = os.getenv("SUPABASE_URL") #type: ignore
 SUPABASE_KEY: str = os.getenv("SUPABASE_KEY") #type: ignore
@@ -19,7 +22,10 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 class Runner:
     def __init__(self):
         #self.output_path = Path(os.getenv("OUTPUT_PATH", "/common_storage/output"))
-        self.idd_path = Path(os.getenv("EPLUS_IDD_PATH", local_eplus_path))
+        #self.idd_path = Path(os.getenv("EPLUS_IDD_PATH", local_eplus_path))
+
+        if EPLUS_IDD_PATH:
+            self.idd_path = Path(os.path.join(EPLUS_IDD_PATH,"Energy+.idd"))
 
         self.output_path = supabase.storage.from_("output")
         self.weather_path = supabase.storage.from_("weather")
