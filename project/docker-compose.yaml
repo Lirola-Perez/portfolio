@@ -60,7 +60,7 @@ services:
     env_file:
       - .env # Points the main folder
     ports:
-      - "2001:8000" # localhost=2001 
+      - "2001:8080" # localhost=2001 
     environment:
       - CORE_URL=http://core-service:8001
       - RUNNER_URL=http://runner-service:8002

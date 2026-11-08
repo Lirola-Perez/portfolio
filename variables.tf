@@ -10,31 +10,6 @@ variable "gcp_region" {
   default     = "europe-west1"
 }
 
-variable "storage_path" {
-  description = "Container path to storage"
-  type        = string
-  default     = "https://kunmisvoxlxoymtxelth.storage.supabase.co/storage/v1/s3"
-  #default     = "/app/storage"
-}
-
-variable "weather_path" {
-  description = "Container path to weather files"
-  type        = string
-  default     = "weather"
-}
-
-variable "output_path" {
-  description = "Container path to output files"
-  type        = string
-  default     = "output"
-}
-
-variable "idf_path" {
-  description = "Container path to idf files"
-  type        = string
-  default     = "idf-files"
-}
-
 variable "supabase_url" {
   description = "General URL value for the SUPABASE - backend service"
   type        = string

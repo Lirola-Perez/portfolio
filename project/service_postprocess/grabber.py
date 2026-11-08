@@ -1,16 +1,26 @@
 import os
 import sqlite3
 from pathlib import Path
+from sqlalchemy import column
+from supabase import Client, create_client
 
 import pandas as pd
 import psycopg2
 from postgres_connection import get_db_connection
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Initialize Supabase Client
+SUPABASE_URL: str = os.getenv("SUPABASE_URL") #type: ignore
+SUPABASE_KEY: str = os.getenv("SUPABASE_KEY") #type: ignore
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 class SimulationData:
     def __init__(self) -> None:
-        self.output_path = os.getenv("OUTPUT_PATH", "common_storage/output")
-
+        self.output_bucket = "output"
+        self.output_path = supabase.storage
+        
     def worker(self):
 
         all_simulations = []
@@ -33,34 +43,48 @@ class SimulationData:
         
         master_df = pd.concat(all_simulations, axis=0)
         self.save_master_df(master_df)
-        self.save_master_aux(master_df)
+        #self.save_master_aux(master_df)
 
         column_names = [col for col in list(master_df.columns) if ":" not in str(col)]
         print(column_names)
         if column_names:
-            column_path = os.path.join(self.output_path,"column_list.txt")
-            print(column_path)
-            with open(column_path, "w") as f:
-                f.write(str(column_names))
-    
+            self.save_in_supabase_storage("column_list.txt",column_names,output_bucket=self.output_bucket)
+
         return master_df
 
     def save_master_df(self, data:pd.DataFrame):
-        if data.any:
-            file_path = os.path.join(self.output_path,"master_training_data.parquet")
-            data.to_parquet(file_path,index=False)
-            print(f"Master dataset saved successfully at {file_path}")
-        else:
-            print("No new data.parquet generated.")
+        if not data.empty:
+            self.save_in_supabase_storage("master_training_data.parquet",data,self.output_bucket,data.to_parquet)
 
     def save_master_aux(self, data:pd.DataFrame):
-        if data.any:
-            file_path = os.path.join(self.output_path,"master_training_data.csv")
-            data.to_csv(file_path,index=False)
-            print(f"Master dataset saved successfully at {file_path}")
-        else:
-            print("No new data.csv generated.")
+            if not data.empty:
+                self.save_in_supabase_storage("master_training_data.csv",data,self.output_bucket,data.to_csv)
 
+    def save_in_supabase_storage(self,file_name:str,file_data,output_bucket:str,file_function=None):
+        local_file_path = "data"
+        if not file_data.empty:
+            # 1. Save temporarily to local ephemeral storage (/tmp/)
+            local_file_path = os.path.join("tmp",file_name)
+            if file_function:
+                file_function(local_file_path, index=False)
+            else:
+                with open(local_file_path, "wb") as f:
+                    f.write(file_data)
+            
+            # 2. Read the local file and upload it to Supabase Storage
+            with open(local_file_path, "rb") as f:
+                self.output_path.from_(output_bucket).upload(
+                    path=file_name,
+                    file=f,
+                    file_options={"upsert": "true"}  # Overwrite if it already exists
+                )
+            print(f"{file_name} uploaded successfully to Supabase bucket: {output_bucket}")
+            
+            # 3. Clean up the temporary local file
+            if os.path.exists(local_file_path):
+                os.remove(local_file_path)
+        else:
+            print(f"No new {local_file_path} in supabase generated.")
 
     def completed_data_grabber(self):
 
@@ -204,7 +228,6 @@ class SimulationData:
                                             value_name=column_values)
                 # splitting Zone Name and Variable Name
                 long_result = self.split_columns(long_result,column_variable,':','Zone','Variable')
-
             outpath_sql = self.get_file_output_path(folder_name,"eplusout.sql")
             if outpath_sql:
                 #self.inspect_sqlite_schema(outpath_sql)
@@ -214,7 +237,9 @@ class SimulationData:
 
                 long_result = self.preparing_table(long_result,all_properties)
 
-                long_result.to_csv(os.path.join(self.output_path,folder_name, 'epluszsz_mod.csv'), index=False)
+                long_result = self.save_in_supabase_storage("epluszsz_mod.csv",long_result,self.output_bucket,long_result.to_scv)
+
+                #long_result.to_csv(os.path.join(self.output_path,folder_name, 'epluszsz_mod.csv'), index=False)
             #print(long_result)
         return long_result
 
@@ -271,12 +296,21 @@ class SimulationData:
         zero_cols = data.columns[(data == 0).all(axis=0)]
         return data.drop(columns=zero_cols)
 
-    def get_file_output_path(self,folder_name:str,file_name:str) -> Path | None:
-        file_path = Path(os.path.join(self.output_path, folder_name, file_name))
-        if not os.path.exists(file_path):
-            print(f"{folder_name}/{file_name} file not found. Run a simulation first!")
-            return None
-        return file_path
+    def get_file_output_path(self,output_bucket,file_name:str):
+
+        file_binary = supabase.storage.from_(output_bucket).download(file_name)
+
+        # 1. Save temporarily to local ephemeral storage (/tmp/)
+        local_file_path = os.path.join("/tmp", file_name)
+        with open(local_file_path,'wb') as f:
+            f.write(file_binary)
+
+        return local_file_path
+
+        # if not os.path.exists(file_path):
+        #     print(f"{folder_name}/{file_name} file not found. Run a simulation first!")
+        #     return None
+        # return final_file_path
 
     def inspect_sqlite_schema(self,output_dir):
         conn_eplus = sqlite3.connect(output_dir)

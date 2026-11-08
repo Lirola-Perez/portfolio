@@ -4,6 +4,7 @@ import subprocess
 import time
 import traceback
 from pathlib import Path
+from supabase import Client, create_client
 
 from eppy import IDF
 from postgres_connection import get_db_connection
@@ -11,10 +12,17 @@ from postgres_connection import get_db_connection
 local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
 local_weather_path = "/home/lirola/PROJECT/PORFOLIO/project/common_storage/weather"
 
+SUPABASE_URL: str = os.getenv("SUPABASE_URL") #type: ignore
+SUPABASE_KEY: str = os.getenv("SUPABASE_KEY") #type: ignore
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 class Runner:
     def __init__(self):
-        self.output_path = Path(os.getenv("OUTPUT_PATH", "/common_storage/output"))
+        #self.output_path = Path(os.getenv("OUTPUT_PATH", "/common_storage/output"))
         self.idd_path = Path(os.getenv("EPLUS_IDD_PATH", local_eplus_path))
+
+        self.output_path = supabase.storage.from_("output")
+        self.weather_path = supabase.storage.from_("weather")
 
     def runner(self):
         
@@ -32,8 +40,9 @@ class Runner:
                 sim_id,batch_id, sim_name,weather_name = simulation_pending
                 try:
                     print(f"Starting to collect data simulation number: {sim_id}...")
-                    weather_path = Path(os.getenv("WEATHER_PATH",local_weather_path))
-                    weather_total_path = Path(f"{weather_path}/{weather_name}.epw")
+                    #weather_path = Path(os.getenv("WEATHER_PATH",local_weather_path))
+                    #weather_total_path = Path(f"{weather_path}/{weather_name}.epw")
+                    weather_total_path = Path(f"{self.weather_path}/{weather_name}.epw")
                     sim_output_path = Path(f"{self.output_path}/{sim_name}")
                     sim_total_path = Path(f"{sim_output_path}/{sim_name}.idf")
 
@@ -79,7 +88,7 @@ class Runner:
 
 
     def pending_simulation_grabber(self) -> tuple | None:
-        "Takes just one simulation with statusn 'pending'"
+        "Takes just one simulation with status 'pending'"
         try: 
             with get_db_connection() as conn, conn.cursor() as cursor:
                 cursor.execute(
