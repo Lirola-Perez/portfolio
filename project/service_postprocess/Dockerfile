@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Current active folder for following commands
-WORKDIR /usr/local/app
+WORKDIR /app
 
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
