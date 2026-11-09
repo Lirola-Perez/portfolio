@@ -1,34 +1,24 @@
+from ast import main
 import os
 import psycopg2
 import subprocess
 import time
 import traceback
 from pathlib import Path
-from supabase import Client, create_client
 
 from eppy import IDF
 from postgres_connection import get_db_connection
 
-#local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
-#local_weather_path = "/home/lirola/PROJECT/PORFOLIO/project/common_storage/weather"
-
 DATABASE_URL = os.getenv("DATABASE_URL")
-EPLUS_IDD_PATH = os.getenv("EPLUS_IDD_PATH","/usr/local/EnergyPlus-23.1.0/")
-
-SUPABASE_URL: str = os.getenv("SUPABASE_URL") #type: ignore
-SUPABASE_KEY: str = os.getenv("SUPABASE_KEY") #type: ignore
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 class Runner:
-    def __init__(self):
-        #self.output_path = Path(os.getenv("OUTPUT_PATH", "/common_storage/output"))
-        #self.idd_path = Path(os.getenv("EPLUS_IDD_PATH", local_eplus_path))
+    def __init__(self,storage_client, idd_path=None):
 
-        if EPLUS_IDD_PATH:
-            self.idd_path = Path(os.path.join(EPLUS_IDD_PATH,"Energy+.idd"))
+        if idd_path:
+            self.idd_path = Path(os.path.join(idd_path,"Energy+.idd"))
 
-        self.output_path = supabase.storage.from_("output")
-        self.weather_path = supabase.storage.from_("weather")
+        # Introduction task: Connection to backend
+        self.client = storage_client
 
     def runner(self):
         
@@ -46,19 +36,51 @@ class Runner:
                 sim_id,batch_id, sim_name,weather_name = simulation_pending
                 try:
                     print(f"Starting to collect data simulation number: {sim_id}...")
-                    #weather_path = Path(os.getenv("WEATHER_PATH",local_weather_path))
-                    #weather_total_path = Path(f"{weather_path}/{weather_name}.epw")
-                    weather_total_path = Path(f"{self.weather_path}/{weather_name}.epw")
-                    sim_output_path = Path(f"{self.output_path}/{sim_name}")
-                    sim_total_path = Path(f"{sim_output_path}/{sim_name}.idf")
 
-                    idf = self.get_idf(sim_total_path,weather_total_path)
+                    weather_file = f"{weather_name}.epw"
+                    idf_file_name = f"{sim_name}.idf"
+
+                    # Creating the temporary folder and files in container:
+                    temp_local_weather_file = self._temp_container("weather",weather_file)
+                    temp_local_idf_file = self._temp_container(sim_name,idf_file_name)
+                    temp_local_output_dir = self._temp_container("output",sim_name)
+
+                    # Downloading the files from supabase in the temporary folder and writing in container file:
+                    supa_weather_file = self.client.retrieve("weather",weather_file)
+                    temp_local_weather_file.write_bytes(supa_weather_file)
+
+                    supa_idf_file = self.client.retrieve("output",f"{sim_name}/{idf_file_name}")
+                    temp_local_idf_file.write_bytes(supa_idf_file)
+
+                    # Clean up the temporary local file
+                    if os.path.exists(temp_local_idf_file):
+                        os.remove(temp_local_idf_file)
+                    if os.path.exists(temp_local_weather_file):
+                        os.remove(temp_local_weather_file)
+                    if os.path.exists(temp_local_output_dir):
+                        os.remove(temp_local_output_dir)
+
+                    # getting the idf file and converting into an IDF object
+                    idf = self.get_idf(temp_local_idf_file,temp_local_weather_file)
 
                     print(f"Running simulation {sim_name} number: {sim_id}...")
                     self.update_simulation_status(sim_id,"Running")
-                    idf.run(weather=weather_total_path,
+
+                    # Starting the RUN
+                    idf.run(weather=temp_local_weather_file,
                             idd=self.idd_path,
-                            output_directory=sim_output_path)
+                            output_directory=temp_local_output_dir)
+
+                    print(f"Uploading results for {sim_name}...")
+                    for output_file in temp_local_output_dir.glob("*"):
+                        # Skip heavy files that aren't needed for analysis
+                        if output_file.suffix in [".sql", ".eso", ".audit"]:
+                            continue
+
+                        with open(output_file, "rb") as f:
+                            self.client.upload(main_folder="output",
+                                                remote_folder=f"{sim_name}/{output_file.name}", 
+                                                file_name=f)
                     
                     print(f"Simulation {sim_name} number: {sim_id} batch: {batch_id}-> COMPLETED")
                     self.update_simulation_status(sim_id,"Completed")
@@ -79,19 +101,24 @@ class Runner:
                     traceback.print_exc()
                     self.update_simulation_status(sim_id, "Failed")
 
+    def _temp_container(self,folder_name:str,file_name= None):
+        # Temporary folder in container:
+        temp_dir = Path(f"/tmp/{folder_name}")
+        temp_dir.mkdir(parents=True,exist_ok=True)
+        if not file_name:
+            return Path(temp_dir)
+        return Path(temp_dir / file_name)
 
-    def get_idf(self,idf_path:Path,epw_path:Path)-> IDF:
-        self.idf_path = idf_path
-        self.epw_path = epw_path
+
+    def get_idf(self,idf_path,epw_path)-> IDF:
 
         # 2. Set the IDD version so eppy knows how to parse it
-        print(f' IDD: {self.idd_path} \n IDF: {self.idf_path} \n EPW: {epw_path} ')
+        print(f' IDD: {self.idd_path} \n IDF: {idf_path} \n EPW: {epw_path} ')
         IDF.setiddname(self.idd_path)
         # 3. Load your IDF model
-        self.idf = IDF(idfname=self.idf_path, epw=epw_path)
+        self.idf = IDF(idfname=idf_path, epw=epw_path)
         print("IDF loaded successfully using eppy!")
         return self.idf
-
 
     def pending_simulation_grabber(self) -> tuple | None:
         "Takes just one simulation with status 'pending'"
@@ -105,6 +132,7 @@ class Runner:
                 )
                 # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]
                 simulation_to_run = cursor.fetchone()
+
         except psycopg2.OperationalError as e:
             # Handles connection drops, network failures, or database down states
             print(f"Database operational error (connection/timeout): {e}")

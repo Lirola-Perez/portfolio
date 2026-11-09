@@ -3,8 +3,9 @@ from pathlib import Path
 
 from eppy.modeleditor import IDF
 
-local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
-idd_path = os.getenv("EPLUS_IDD_PATH", local_eplus_path)
+#local_eplus_path = "/home/lirola/PROJECT/PORFOLIO/energyplus/Energy+.idd"
+EPLUS_IDD_PATH = os.getenv("EPLUS_IDD_PATH", "/usr/local/EnergyPlus-23.1.0")
+idd_path = os.path.join(EPLUS_IDD_PATH,"Energy+.idd")
 
 class IdfClass(IDF):
         

@@ -14,13 +14,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Download ONLY the Energy+.idd schema file directly from GitHub (v23.1.0)
 RUN mkdir -p /usr/local/EnergyPlus-23.1.0 && \
-    wget -O energyplus.tar.gz https://github.com/NREL/EnergyPlus/releases/download/v23.1.0/EnergyPlus-23.1.0-87ed9199d4-Linux-Ubuntu22.04-x86_64.tar.gz && \
+    wget -O energyplus.tar.gz https://github.com/NatLabRockies/EnergyPlus/releases/download/v23.1.0/EnergyPlus-23.1.0-87ed9199d4-Linux-Ubuntu22.04-x86_64.tar.gz && \
     tar -xzf energyplus.tar.gz --wildcards '*/Energy+.idd' --strip-components=1 && \
     mv Energy+.idd /usr/local/EnergyPlus-23.1.0/Energy+.idd && \
     rm energyplus.tar.gz
 
-# Point eppy directly to this file via environment variable
-ENV EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
+ENV EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/
 
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)

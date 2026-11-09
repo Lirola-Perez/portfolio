@@ -1,47 +1,26 @@
 import json
 import os
 from pathlib import Path
-from typing import cast
-
 import psycopg2
 from eppy.modeleditor import IDF
 from idf_class import IdfClass
 from postgres_connection import get_db_connection
 from psycopg2.extras import Json
-from supabase import Client,create_client
-import tempfile
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Initialize Supabase Client
-SUPABASE_URL: str = os.getenv("SUPABASE_URL") #type: ignore
-SUPABASE_KEY: str = os.getenv("SUPABASE_KEY") #type: ignore
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
 class IDFManager:
 
-    def __init__(self):
+    def __init__(self,storage_client):
 
-        self.parameters_bucket = 'parameters'
-        self.idfs_bucket = "idf-files"
-        self.weather_bucket = "weather"
-        self.output_bucket = "output"
-        parameters_name = 'parameter_run.json'
+        self.client = storage_client
+        parameters_name = "parameter_run.json"
 
         try:
-            self.storage_path = supabase.storage
-            print(self.storage_path)
-            self.output_path = self.storage_path.from_(self.output_bucket)
-            self.weather_file_binary = self.storage_path.from_(self.weather_bucket)
-            self.idf_files_path = self.storage_path.from_(self.idfs_bucket)
-        except Exception as e: # noqa: BLE001
-            print(f"Folders in SupaBase storage missing {self.idfs_bucket}, {self.weather_bucket}, {self.output_bucket}: Exception: {e}")
-
-        try:
-            config_data = self.storage_path.from_(self.parameters_bucket).download(parameters_name)
+            config_data = self.client.retrieve("parameters",parameters_name)
             # Temporary directory for dealing with the IDF and EPW data files
-            temp_dir = tempfile.mkdtemp()
-            temp_file = Path(temp_dir, "parameter_run.json")
+
+            temp_file = self._temp_container("parameters",parameters_name)
             with open(temp_file, "wb") as f:
                 f.write(config_data)
 
@@ -51,68 +30,6 @@ class IDFManager:
 
         except FileNotFoundError:
             print(f"File 'parameter_run.json' not found in SupaBase.")
-
-    def parse_batch_parameters_to_postgresql(self, config_data:dict):
-
-        try:
-            with get_db_connection() as conn, conn.cursor() as cursor:
-
-                cursor.execute(
-                    """INSERT INTO simulation_batches (config_data)
-                    VALUES (%s)
-                    RETURNING batch_id""",
-                    (Json(config_data),),
-                )
-                row = cursor.fetchone()
-                print("Debug - fetchone result:", row)  # Let's see what prints here
-
-                if row is None:
-                    raise ValueError(
-                        "The INSERT statement did not return a batch_id. Check your table"
-                        " schema."
-                    )
-
-                self.batch_id = row[0]
-                return self.batch_id
-
-        except psycopg2.OperationalError as e:
-            # Handles connection drops, network failures, or database down states
-            print(f"Database operational error (connection/timeout): {e}")
-            raise
-
-        except psycopg2.ProgrammingError as e:
-            # Handles syntax errors in your SQL query or missing tables/columns
-            print(f"Database programming error (bad SQL/schema): {e}")
-            raise
-
-        except psycopg2.DatabaseError as e:
-            # Catch-all for any other database-specific errors
-            print(f"General database error: {e}")
-            raise
-
-        except Exception as e: # noqa: BLE001
-            print(f"Error saving results to DB: {e}")
-            raise
-
-    def load_config_from_postgresql(self) -> dict:
-        '''Connect to PostgresSQL to fetch JSONB config'''
-        # Open connection -------------------------
-        with get_db_connection() as conn, conn.cursor() as cursor:
-            cursor.execute(
-                "SELECT config_data FROM simulation_batches WHERE batch_id = %s",
-                (self.batch_id,)
-            )
-            # to grab the row maching the batch_id
-            row = cursor.fetchone()
-        # Closed connection -------------------------
-
-        if not row:
-            raise ValueError(f"Batch ID {self.batch_id} not found in database")
-
-        # request give just the property_values selected config_data 
-        config_data = row[0]
-
-        return config_data
 
     def process_idf_files(self):
         '''fetch config from PostgreSQL to process files'''
@@ -130,24 +47,27 @@ class IDFManager:
 
             print(idf_name)
 
-            # look for that file in the common_storage volume
-            idf_file_binary = self.idf_files_path.download(f"{idf_name}.idf")
-            weather_file_binary = self.weather_file_binary.download(f"{weather_name}.epw")
-
             # Temporary directory for dealing with the IDF and EPW data files
-            temp_dir = tempfile.mkdtemp()
-            idf_file_path = os.path.join(temp_dir,f"{idf_name}.idf")
-            weather_file_path = os.path.join(temp_dir,f"{weather_name}.epw")
+            temp_local_idf_file = self._temp_container(idf_name,f"{idf_name}.idf")
+            temp_local_weather_file = self._temp_container(weather_name,f"{weather_name}.epw")
 
-            with open(idf_file_path, "wb") as f:
-                f.write(idf_file_binary)
+            # look for that file in the common_storage volume
+            idf_file_binary = self.client.retrieve(idf_name,f"{idf_name}.idf")
+            temp_local_idf_file.write_bytes(idf_file_binary)
 
-            with open(weather_file_path, "wb") as f:
-                f.write(weather_file_binary)
+            weather_file_binary = self.client.retrieve(weather_name,f"{weather_name}.epw")
+            temp_local_weather_file.write_bytes(weather_file_binary)
 
             # --- CREATING THE IDF CLASS --------
             idf = IdfClass()        
-            idf_file = idf.get_idf(Path(idf_file_path),Path(weather_file_path))
+            idf_file = idf.get_idf(Path(temp_local_idf_file),Path(temp_local_weather_file))
+
+            # Clean up the temporary local file
+            if os.path.exists(temp_local_idf_file):
+                os.remove(temp_local_idf_file)
+            if os.path.exists(temp_local_weather_file):
+                os.remove(temp_local_weather_file)
+                
             # -----------------------------------
             # Setting general simulation common configuration
             # Simulation config // output variables
@@ -167,21 +87,17 @@ class IDFManager:
         
         for val in property_values:
 
-            # run_folder = Path(f"{self.output_path}/{idf_name}_{weather}_{property}_{val}")
-            # run_folder.mkdir(parents=True, exist_ok=True)
-
             new_idf_name = f"{idf_name}_{weather}_{property}_{val}"
 
             other_properties = [p for p in all_properties if p != property]
             print(other_properties)
             
             run_sim = sim
-            # Include all other_properties adjusted from other idfs
-            run_sim["other_properties"] = other_properties
-            # Include value changed from this idf
-            run_sim["property_value"] = val
-            # Include the new name
-            run_sim["modified_idf_name"] = new_idf_name
+            keys = ["other_properties","property_value","modified_idf_name"]
+            values = [other_properties,val,new_idf_name]
+
+            for x,y in keys,values:
+                run_sim[x]= y 
 
             # transformation: --------------
             print(type, type_name)
@@ -260,20 +176,76 @@ class IDFManager:
                 raise
 
             # Creating a temporary directory and saving IDF temporary in it:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                dir_filename = os.path.join(new_idf_name, new_idf_name + ".idf")
-                new_path = os.path.join(temp_dir, dir_filename)
+            dir_filename = self._temp_container(new_idf_name,new_idf_name + "idf")
 
-                # Creating the local subfolder inside temp_dir if it doesn't exist
-                os.makedirs(os.path.dirname(new_path), exist_ok=True)
-                # and now saving it.
-                idf_file.saveas(new_path)
-                # taking the IDF from the temp dir and saving in SupaBase
-                with open(new_path, 'rb') as f:
-                    self.storage_path.from_(self.output_bucket).upload(
-                        path=dir_filename,
-                        file=f,
-                        file_options={"upsert": "true"})
+            # and now saving it.
+            idf_file.saveas(dir_filename)
+            # taking the IDF from the temp dir and saving in SupaBase
+            with open(dir_filename, 'rb') as f:
+                self.client.upload(main_folder="output",remote_folder=new_idf_name,file_name=f)
+
+
+    def parse_batch_parameters_to_postgresql(self, config_data:dict):
+
+        try:
+            with get_db_connection() as conn, conn.cursor() as cursor:
+
+                cursor.execute(
+                    """INSERT INTO simulation_batches (config_data)
+                    VALUES (%s)
+                    RETURNING batch_id""",
+                    (Json(config_data),),
+                )
+                row = cursor.fetchone()
+                print("Debug - fetchone result:", row)  # Let's see what prints here
+
+                if row is None:
+                    raise ValueError(
+                        "The INSERT statement did not return a batch_id. Check your table"
+                        " schema."
+                    )
+
+                self.batch_id = row[0]
+                return self.batch_id
+
+        except psycopg2.OperationalError as e:
+            # Handles connection drops, network failures, or database down states
+            print(f"Database operational error (connection/timeout): {e}")
+            raise
+
+        except psycopg2.ProgrammingError as e:
+            # Handles syntax errors in your SQL query or missing tables/columns
+            print(f"Database programming error (bad SQL/schema): {e}")
+            raise
+
+        except psycopg2.DatabaseError as e:
+            # Catch-all for any other database-specific errors
+            print(f"General database error: {e}")
+            raise
+
+        except Exception as e: # noqa: BLE001
+            print(f"Error saving results to DB: {e}")
+            raise
+
+    def load_config_from_postgresql(self) -> dict:
+        '''Connect to PostgresSQL to fetch JSONB config'''
+        # Open connection -------------------------
+        with get_db_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT config_data FROM simulation_batches WHERE batch_id = %s",
+                (self.batch_id,)
+            )
+            # to grab the row maching the batch_id
+            row = cursor.fetchone()
+        # Closed connection -------------------------
+
+        if not row:
+            raise ValueError(f"Batch ID {self.batch_id} not found in database")
+
+        # request give just the property_values selected config_data 
+        config_data = row[0]
+
+        return config_data
 
     def set_idf_info(self,idf:IDF,output_list:list):
 
@@ -303,12 +275,20 @@ class IDFManager:
         self.output_object_generator(idf, output_list)
         return idf
 
+    def _temp_container(self,folder_name:str,file_name= None):
+        # Temporary folder in container:
+        temp_dir = Path(f"/tmp/{folder_name}")
+        temp_dir.mkdir(parents=True,exist_ok=True)
+        if not file_name:
+            return Path(temp_dir)
+        return Path(temp_dir / file_name)
+
     def key_filter(self,idf, word:str) -> list:
         key_filtered = []
-        for SUPABASE_KEY in idf.idfobjects:
+        for obj in idf.idfobjects:
             word_cap = word.upper()
-            if SUPABASE_KEY.startswith(word_cap):
-                key_filtered.append(SUPABASE_KEY)
+            if obj.startswith(word_cap):
+                key_filtered.append(obj)
         return key_filtered
 
     def output_object_generator(self,idf,output_list:list):

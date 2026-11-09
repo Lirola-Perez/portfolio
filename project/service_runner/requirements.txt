@@ -1,2 +1,4 @@
 eppy>=0.5.5
 psycopg2-binary>=2.9.0
+supabase
+sqlalchemy

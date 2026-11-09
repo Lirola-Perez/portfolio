@@ -15,12 +15,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Download and extract the full EnergyPlus engine
-RUN wget -O energyplus.tar.gz https://github.com/NREL/EnergyPlus/releases/download/v23.1.0/EnergyPlus-23.1.0-87ed9199d4-Linux-Ubuntu22.04-x86_64.tar.gz && \
-    tar -xzf energyplus.tar.gz && \
-    mv EnergyPlus-23.1.0-87ed9199d4-Linux-Ubuntu22.04-x86_64 /usr/local/EnergyPlus-23.1.0 && \
+RUN mkdir -p /usr/local/EnergyPlus-23.1.0 && \
+    wget -O energyplus.tar.gz https://github.com/NatLabRockies/EnergyPlus/releases/download/v23.1.0/EnergyPlus-23.1.0-87ed9199d4-Linux-Ubuntu22.04-x86_64.tar.gz && \
+    tar -xzf energyplus.tar.gz -C /usr/local/EnergyPlus-23.1.0 --strip-components=1 && \
     rm energyplus.tar.gz
 
-ENV EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/Energy+.idd
+ENV EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/
 
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
