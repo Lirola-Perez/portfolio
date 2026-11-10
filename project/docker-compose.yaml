@@ -11,6 +11,8 @@ services:
       - .env # Points the main folder
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
     volumes:
       - ./common_storage:/app/storage # host_storage(laptop);container_storage
 
@@ -23,6 +25,8 @@ services:
       - .env # Points the main folder
     environment:
       - CORE_SERVICE_PATH=http://core-service:8001
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
     # Mounting volume for commoon files
     volumes:
       - ./common_storage:/app/storage
@@ -32,6 +36,9 @@ services:
     depends_on:
       postgres-db:
         condition: service_healthy
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
     env_file:
       - .env # Points the main folder
     # Mounting volume for commoon files

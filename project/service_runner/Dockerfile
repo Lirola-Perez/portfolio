@@ -21,6 +21,7 @@ RUN mkdir -p /usr/local/EnergyPlus-23.1.0 && \
     rm energyplus.tar.gz
 
 ENV EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/
+ENV BACKEND_STORAGE_CLOUD = true
 
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)

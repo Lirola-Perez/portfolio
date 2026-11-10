@@ -4,6 +4,7 @@ import psycopg2
 import subprocess
 import time
 import traceback
+import shutil
 from pathlib import Path
 
 from eppy import IDF
@@ -27,8 +28,7 @@ class Runner:
             simulation_pending = self.pending_simulation_grabber()
 
             if not simulation_pending:
-                # No jobs available right now; sleep briefly and check again
-                # 
+                # No jobs available right now; sleep briefly and check again#
                 time.sleep(5)
                 continue
 
@@ -52,14 +52,6 @@ class Runner:
                     supa_idf_file = self.client.retrieve("output",f"{sim_name}/{idf_file_name}")
                     temp_local_idf_file.write_bytes(supa_idf_file)
 
-                    # Clean up the temporary local file
-                    if os.path.exists(temp_local_idf_file):
-                        os.remove(temp_local_idf_file)
-                    if os.path.exists(temp_local_weather_file):
-                        os.remove(temp_local_weather_file)
-                    if os.path.exists(temp_local_output_dir):
-                        os.remove(temp_local_output_dir)
-
                     # getting the idf file and converting into an IDF object
                     idf = self.get_idf(temp_local_idf_file,temp_local_weather_file)
 
@@ -71,6 +63,9 @@ class Runner:
                             idd=self.idd_path,
                             output_directory=temp_local_output_dir)
 
+                    print(f"Simulation {sim_name} number: {sim_id} batch: {batch_id}-> COMPLETED")
+                    self.update_simulation_status(sim_id,"Completed")
+
                     print(f"Uploading results for {sim_name}...")
                     for output_file in temp_local_output_dir.glob("*"):
                         # Skip heavy files that aren't needed for analysis
@@ -81,25 +76,30 @@ class Runner:
                             self.client.upload(main_folder="output",
                                                 remote_folder=f"{sim_name}/{output_file.name}", 
                                                 file_name=f)
-                    
-                    print(f"Simulation {sim_name} number: {sim_id} batch: {batch_id}-> COMPLETED")
-                    self.update_simulation_status(sim_id,"Completed")
+
+                    # Clean up the temporary local file
+                    if os.path.exists(temp_local_idf_file):
+                        os.remove(temp_local_idf_file)
+                    if os.path.exists(temp_local_weather_file):
+                        os.remove(temp_local_weather_file)
+                    if os.path.exists(temp_local_output_dir):
+                        shutil.rmtree(temp_local_output_dir)
 
                 except (FileNotFoundError, OSError) as e:
                     # Handle specific file/path problems
                     print(f"[{sim_id}] File system error during simulation: {e}")
-                    self.update_simulation_status(sim_id, "Failed")
+                    self.update_simulation_status(sim_id, "Failed run")
 
                 except subprocess.CalledProcessError as e:
                     # Handle specific EnergyPlus execution crashes
                     print(f"[{sim_id}] EnergyPlus binary execution failed: {e}")
-                    self.update_simulation_status(sim_id, "Failed")
+                    self.update_simulation_status(sim_id, "Failed run")
 
                 except Exception as e: # noqa: BLE001
                     # Catch-all safeguard for any other unforeseen errors
                     print(f"[{sim_id}] Simulation failed with unexpected error: {e}")
                     traceback.print_exc()
-                    self.update_simulation_status(sim_id, "Failed")
+                    self.update_simulation_status(sim_id, "Failed run")
 
     def _temp_container(self,folder_name:str,file_name= None):
         # Temporary folder in container:
@@ -127,35 +127,33 @@ class Runner:
                 cursor.execute(
                     """SELECT simulation_id,batch_id,idf_filename,weather FROM simulations
                     WHERE status_simulation = 'Pending'
-                    OR status_simulation = 'Failed'
                     LIMIT 1;"""
                 )
                 # Structure = [(1, 'Simulation_1'), (2, 'Simulation_2'), ...]
                 simulation_to_run = cursor.fetchone()
+                return simulation_to_run
 
         except psycopg2.OperationalError as e:
             # Handles connection drops, network failures, or database down states
             print(f"Database operational error (connection/timeout): {e}")
-            raise
+            return None
 
         except psycopg2.ProgrammingError as e:
             # Handles syntax errors in your SQL query or missing tables/columns
             print(f"Database programming error (bad SQL/schema): {e}")
-            raise
+            return None
 
         except psycopg2.DatabaseError as e:
             # Catch-all for any other database-specific errors
             print(f"General database error: {e}")
-            raise
+            return None
 
         except Exception as e: # noqa: BLE001 
             print(f"Error saving results to DB: {e}")
-            raise
-                    
-        return simulation_to_run
+            return None
 
     def update_simulation_status(self,id:int,status:str):
-        "Changes the simulaition status"
+        "Changes the simulation status"
         with get_db_connection() as conn, conn.cursor() as cursor:
             cursor.execute(
                 """UPDATE simulations SET status_simulation = %s WHERE simulation_id = %s""",

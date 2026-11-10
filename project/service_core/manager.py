@@ -15,6 +15,8 @@ class IDFManager:
 
         self.client = storage_client
         parameters_name = "parameter_run.json"
+        # Clears all files and virtual folders inside the 'output' bucket
+        self.client.empty_folder("output")
 
         try:
             config_data = self.client.retrieve("parameters",parameters_name)
@@ -27,6 +29,10 @@ class IDFManager:
             with open(temp_file, "r") as f:
                 config_data = json.load(f)
                 self.batch_id = self.parse_batch_parameters_to_postgresql(config_data)
+
+            # Clean up the temporary local file
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
 
         except FileNotFoundError:
             print(f"File 'parameter_run.json' not found in SupaBase.")
@@ -52,10 +58,10 @@ class IDFManager:
             temp_local_weather_file = self._temp_container(weather_name,f"{weather_name}.epw")
 
             # look for that file in the common_storage volume
-            idf_file_binary = self.client.retrieve(idf_name,f"{idf_name}.idf")
+            idf_file_binary = self.client.retrieve("idf-files",f"{idf_name}.idf")
             temp_local_idf_file.write_bytes(idf_file_binary)
 
-            weather_file_binary = self.client.retrieve(weather_name,f"{weather_name}.epw")
+            weather_file_binary = self.client.retrieve("weather",f"{weather_name}.epw")
             temp_local_weather_file.write_bytes(weather_file_binary)
 
             # --- CREATING THE IDF CLASS --------
@@ -73,6 +79,13 @@ class IDFManager:
             # Simulation config // output variables
             idf_file = self.set_idf_info(idf_file,output_list)
             self.parametrization(idf_file,sim,all_properties)
+
+            self.client.upload(main_folder="output",
+                                remote_folder="ready.flag",
+                                file_name=b"done",  # Can be empty or contain a timestamp
+                                )
+            
+            print("Core process finished. Ready flag uploaded.")
 
     def parametrization(self,idf_file:IDF,sim:dict,all_properties:list):
         # Function to add/change the files with new parameters and 
@@ -96,7 +109,7 @@ class IDFManager:
             keys = ["other_properties","property_value","modified_idf_name"]
             values = [other_properties,val,new_idf_name]
 
-            for x,y in keys,values:
+            for x,y in zip(keys,values):
                 run_sim[x]= y 
 
             # transformation: --------------
@@ -176,13 +189,22 @@ class IDFManager:
                 raise
 
             # Creating a temporary directory and saving IDF temporary in it:
-            dir_filename = self._temp_container(new_idf_name,new_idf_name + "idf")
+            temp_dir_filename = self._temp_container(new_idf_name,f"{new_idf_name}.idf")
+            print(temp_dir_filename)
 
             # and now saving it.
-            idf_file.saveas(dir_filename)
+            idf_file.saveas(temp_dir_filename)
             # taking the IDF from the temp dir and saving in SupaBase
-            with open(dir_filename, 'rb') as f:
-                self.client.upload(main_folder="output",remote_folder=new_idf_name,file_name=f)
+            with open(temp_dir_filename, 'rb') as f:
+                remote_dir = f"{new_idf_name}/{new_idf_name}.idf"
+                main_folder = "output"
+                self.client.upload(main_folder=main_folder,
+                                   remote_folder= remote_dir,
+                                   file_name=f)
+
+            # Clean up the temporary local file
+            if os.path.exists(temp_dir_filename):
+                os.remove(temp_dir_filename)
 
 
     def parse_batch_parameters_to_postgresql(self, config_data:dict):

@@ -9,10 +9,10 @@ class SupabaseStorage:
             self.supabase: Client = create_client(SUPABASE_URL,SUPABASE_KEY)
 
     def retrieve(self,main_folder:str, file_name: str):
-            return self.supabase.storage.from_("buckets").download(f"{main_folder}/{file_name}")
-    
+        return self.supabase.storage.from_(main_folder).download(file_name)
+
     def upload(self,main_folder:str,remote_folder:str, file_name):
-        return self.supabase.storage.from_("buckets").upload(
+        return self.supabase.storage.from_(main_folder).upload(
             path=remote_folder, 
-            file=f"{main_folder}/{file_name}",
+            file=file_name,
             file_options={"upsert": "true"})

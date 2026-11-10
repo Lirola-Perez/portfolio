@@ -73,7 +73,7 @@ class SimulationData:
             
             # Read the local file and upload it to Supabase Storage
             with open(local_file_path, "rb") as f:
-                self.client("output","all_results",f)
+                self.client.upload("output","all_results",f)
                 
             print(f"{file_name} uploaded successfully to Supabase bucket: {folder_name}")
             

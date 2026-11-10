@@ -10,7 +10,8 @@ WORKDIR /app
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+#RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Download ONLY the Energy+.idd schema file directly from GitHub (v23.1.0)
 RUN mkdir -p /usr/local/EnergyPlus-23.1.0 && \
@@ -20,6 +21,7 @@ RUN mkdir -p /usr/local/EnergyPlus-23.1.0 && \
     rm energyplus.tar.gz
 
 ENV EPLUS_IDD_PATH=/usr/local/EnergyPlus-23.1.0/
+ENV BACKEND_STORAGE_CLOUD = true
 
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
