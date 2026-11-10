@@ -2,7 +2,7 @@ import os
 from grabber import SimulationData
 from backend_linker import SupabaseStorage
 
-backend_use = os.getenv("BACKEND_STORAGE_LOCAL")
+backend_use = os.getenv("BACKEND_STORAGE_LOCAL","false")
 EPLUS_IDD_PATH = os.getenv("EPLUS_IDD_PATH","/usr/local/EnergyPlus-23.1.0/")
 
 if not backend_use:
