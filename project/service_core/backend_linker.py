@@ -35,5 +35,5 @@ class SupabaseStorage:
                     # 3. Delete them explicitly
                     self.storage.from_(main_folder).remove(file_paths)
                     print(f"Successfully cleared {len(file_paths)} items from '{main_folder}'.")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Note/Warning clearing bucket: {e}")
