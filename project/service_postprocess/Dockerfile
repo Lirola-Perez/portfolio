@@ -10,7 +10,8 @@ WORKDIR /app
 # Dependencies-> as the CONTEXT in pipeline is set to ROOT (".") here should be
 #               specified the paths from that ROOT (PORTFOLIO)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt
 
 ENV BACKEND_STORAGE_CLOUD = true
 

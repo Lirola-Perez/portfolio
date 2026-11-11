@@ -22,15 +22,24 @@ class Runner:
         self.client = storage_client
 
     def runner(self):
+
+        jobs_processed = False
         
         while True:
             # Keeps the runner in endless loop
             simulation_pending = self.pending_simulation_grabber()
 
             if not simulation_pending:
-                # No jobs available right now; sleep briefly and check again#
-                time.sleep(5)
-                continue
+                if jobs_processed:
+                    print("All simulations completed for this batch. Exiting runner container...")
+                    break
+                else:
+                    # Brief pause and check again
+                    time.sleep(2)
+                    continue
+
+            # At least one job running in this session
+            jobs_processed = True
 
             if simulation_pending:
                 sim_id,batch_id, sim_name,weather_name = simulation_pending
@@ -68,7 +77,7 @@ class Runner:
 
                     print(f"Uploading results for {sim_name}...")
                     for output_file in temp_local_output_dir.glob("*"):
-                        # Skip heavy files that aren't needed for analysis
+                        # Skipping heavy files that aren't needed for analysis
                         if output_file.suffix in [".sql", ".eso", ".audit"]:
                             continue
 

@@ -1,6 +1,5 @@
 import os
 from supabase import Client, create_client
-import supabase
 
 class SupabaseStorage:
     def __init__(self) -> None:

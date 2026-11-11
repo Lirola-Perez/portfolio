@@ -19,8 +19,8 @@ services:
   runner-service:
     build: ./service_runner
     depends_on:
-      postgres-db:
-        condition: service_healthy
+      core-service:
+        condition: service_completed_successfully
     env_file:
       - .env # Points the main folder
     environment:
@@ -34,8 +34,8 @@ services:
   postprocess-service:
     build: ./service_postprocess
     depends_on:
-      postgres-db:
-        condition: service_healthy
+      runner-service:
+        condition: service_completed_successfully
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
@@ -48,8 +48,8 @@ services:
   ml-service:
     build: ./neuronal_network
     depends_on:
-      postgres-db:
-        condition: service_healthy
+      postprocess-service:
+        condition: service_completed_successfully
     environment:
       - PYTHONUNBUFFERED=1
     env_file:

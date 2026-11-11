@@ -1,8 +1,9 @@
+from fileinput import filename
 import os
 import sqlite3
 from pathlib import Path
 from sqlalchemy import column
-
+import time
 import pandas as pd
 import psycopg2
 from postgres_connection import get_db_connection
@@ -13,75 +14,118 @@ class SimulationData:
     def __init__(self,client_storage) -> None:
         self.folder_name = "output"
         self.client = client_storage
+        self.all_simulations = []
         
     def worker(self):
 
-        all_simulations = []
-
         while True:
-            
-            table = self.file_db_grabber()
 
-            if table is None or not isinstance(table, pd.DataFrame):
-               print("NO TABLE GRABBED!")
-               break
+            simulation_data = self.completed_data_grabber()
+            if simulation_data is None:
+                print("No more completed simulations found.")
+                break
+
+            table = self.file_db_grabber(simulation_data)
+            if table is None:
+                print(f"WARNING: File grabber failed for simulation {simulation_data[0]}, skipping...")
+                continue  # Use continue instead of break so the loop keeps processing remaining items!
 
             self.result_data_grabber(table)
 
-            all_simulations.append(table)
+            print(table)
 
-        if not all_simulations:
+            self.all_simulations.append(table)
+
+        if not self.all_simulations:
             print("WARNING: Empty master data table or simulations already 'Processed'!")
             return pd.DataFrame()
         
-        master_df = pd.concat(all_simulations, axis=0)
+        master_df = pd.concat(self.all_simulations, axis=0)
         self.save_master_df(master_df)
+        print(master_df)
         #self.save_master_aux(master_df)
 
         column_names = [col for col in list(master_df.columns) if ":" not in str(col)]
         print(column_names)
         if column_names:
-            self.save_in_supabase_storage("column_list.txt",column_names,folder_name=self.folder_name)
+            self.save_in_supabase_storage(file_name="column_list.txt",
+                                          file_data=column_names,
+                                          folder_name=self.folder_name)
 
         return master_df
 
-    def save_master_df(self, data:pd.DataFrame):
-        if not data.empty:
-            self.save_in_supabase_storage("master_training_data.parquet",data,self.folder_name,data.to_parquet)
+    def file_db_grabber(self,simulation_data) -> pd.DataFrame | None:
 
-    def save_master_aux(self, data:pd.DataFrame):
-            if not data.empty:
-                self.save_in_supabase_storage("master_training_data.csv",data,self.folder_name,data.to_csv)
-
-    def _temp_container(self,folder_name:str,file_name= None):
-        # Temporary folder in container:
-        temp_dir = Path(f"/tmp/{folder_name}")
-        temp_dir.mkdir(parents=True,exist_ok=True)
-        if not file_name:
-            return Path(temp_dir)
-        return Path(temp_dir / file_name)
-
-    def save_in_supabase_storage(self,file_name:str,file_data,folder_name:str,file_function=None):
-
-        local_file_path = self._temp_container("auxiliar",file_name)
-
-        if not file_data.empty:
-            if file_function:
-                file_data = file_function(local_file_path, index=False)
-            with open(local_file_path, "wb") as f:
-                f.write(file_data)
+        all_properties = []
+        long_result = pd.DataFrame()
+        # simulation_data = self.completed_data_grabber()
+        if simulation_data:
+            _,folder_name,_,parameters = simulation_data
+            outpath_csv = self.get_file_output_path(folder_name,"epluszsz.csv")
+            #print(outpath_csv)
+            property = str
             
-            # Read the local file and upload it to Supabase Storage
-            with open(local_file_path, "rb") as f:
-                self.client.upload("output","all_results",f)
-                
-            print(f"{file_name} uploaded successfully to Supabase bucket: {folder_name}")
-            
-            # Clean up the temporary local file
-            if os.path.exists(local_file_path):
-                os.remove(local_file_path)
-        else:
-            print(f"No new {local_file_path} in supabase generated.")
+            if outpath_csv:
+                result = pd.read_csv(outpath_csv)
+                property = parameters["property"]
+                #old_property = f"{property}_old_value"
+                result['Weather'] = parameters["weather"]
+                result['File'] = parameters["idf_file"]
+                result[property] = parameters["property_value"]
+                result[f"{property}_old_value"] = parameters[f"{property}_old_value"]
+                print(property)
+                # Other properties
+                other_properties = parameters["other_properties"]
+                other_values = parameters["other_values"]
+                print(other_properties,other_values)
+
+                if other_properties:
+                    for enum,prop in enumerate(other_properties):
+                        result[prop] = other_values[enum]
+
+                # Unifying names
+                result = self.name_unifier(result)
+
+                # Keeping only time-related rows
+                result = result[result['Time'].astype(str).str.contains(':', na=False)]
+
+                # cleaning columns with only zeros
+                result = self.clean_columns(result)
+
+                all_properties = [property] + other_properties
+                # MELTING keeping the anchor columns Time, weather, file.
+                # melting all Zones variables and all values of those zones variables in one column.
+                id_vars = ['Time', 'Weather', 'File' ] + all_properties
+                print(id_vars)
+                #print(result.columns)
+                # selecting all zone:variables for setting them in just one column
+                value_vars = [col for col in result.columns if col not in id_vars]
+                # Customized Name of the column and value
+                column_variable = 'Zone_Variable'
+                column_values = 'Value'
+                long_result = result.melt(id_vars=id_vars, 
+                                            value_vars=value_vars, 
+                                            var_name=column_variable, 
+                                            value_name=column_values)
+                # splitting Zone Name and Variable Name
+                long_result = self.split_columns(long_result,column_variable,':','Zone','Variable')
+
+            # outpath_sql = self.get_file_output_path(folder_name,"eplusout.sql")
+            # if outpath_sql:
+            #     #self.inspect_sqlite_schema(outpath_sql)
+            #     geometry = self.get_general_geometry(outpath_sql)
+
+            #     long_result = self.add_geometry_to_table(long_result,geometry)
+
+                long_result = self.preparing_table(long_result,all_properties)
+
+                self.save_in_supabase_storage(file_name="epluszsz_mod.csv",
+                                                    file_data=long_result,
+                                                    folder_name=folder_name,
+                                                    file_function=long_result.to_csv)
+            return long_result
+
+        return None
 
     def completed_data_grabber(self):
 
@@ -89,7 +133,7 @@ class SimulationData:
             with get_db_connection() as conn, conn.cursor() as cursor:
                 
                 # Using UPDATE for update status and retrieve vars
-                # Using FOR UPDATE SKIP LOCKED to avoid conflict with other containers
+                # Using 'FOR UPDATE SKIP LOCKED' to avoid conflict with other containers
                 cursor.execute(
                     """UPDATE simulations SET status_simulation = 'Processed'
                     WHERE simulation_id = (
@@ -104,27 +148,26 @@ class SimulationData:
 
                 if not simulation_row:
                     return None
+                return simulation_row
 
         except psycopg2.OperationalError as e:
             # Handles connection drops, network failures, or database down states
             print(f"Database operational error (connection/timeout): {e}")
-            raise
+            return None
 
         except psycopg2.ProgrammingError as e:
             # Handles syntax errors in your SQL query or missing tables/columns
             print(f"Database programming error (bad SQL/schema): {e}")
-            raise
+            return None
 
         except psycopg2.DatabaseError as e:
             # Catch-all for any other database-specific errors
             print(f"General database error: {e}")
-            raise
+            return None
 
         except Exception as e: # noqa: BLE001 
             print(f"Error saving results to DB: {e}")
-            raise 
-
-        return simulation_row
+            return None
 
     def result_data_grabber(self,results:pd.DataFrame):
 
@@ -170,77 +213,58 @@ class SimulationData:
             print(f"Error saving results to DB: {e}")
             raise
 
-    def file_db_grabber(self) -> pd.DataFrame | None:
+    def save_master_df(self, data:pd.DataFrame):
+        if not data.empty:
+            self.save_in_supabase_storage(file_name="master_training_data.parquet",
+                                          file_data=data,
+                                          folder_name=self.folder_name,
+                                          file_function=data.to_parquet)
 
-        all_properties = []
-        long_result = None
-        simulation_data = self.completed_data_grabber()
-        if simulation_data:
-            _,folder_name,_,parameters = simulation_data
-            outpath_csv = self.get_file_output_path(folder_name,"epluszsz.csv")
-            #print(outpath_csv)
-            property = str
-            long_result = pd.DataFrame()
-            if outpath_csv:
-                result = pd.read_csv(outpath_csv)
-                property = parameters["property"]
-                #old_property = f"{property}_old_value"
-                result['Weather'] = parameters["weather"]
-                result['File'] = parameters["idf_file"]
-                result[property] = parameters["property_value"]
-                result[f"{property}_old_value"] = parameters[f"{property}_old_value"]
-                print(property)
-                # Other properties
-                other_properties = parameters["other_properties"]
-                other_values = parameters["other_values"]
-                print(other_properties,other_values)
+    def save_master_aux(self, data:pd.DataFrame):
+            if not data.empty:
+                self.save_in_supabase_storage(file_name="master_training_data.csv",
+                                              file_data=data,
+                                              folder_name=self.folder_name,
+                                              file_function=data.to_csv)
 
-                if other_properties:
-                    for enum,prop in enumerate(other_properties):
-                        result[prop] = other_values[enum]
+    def _temp_container(self,folder_name:str,file_name= None):
+        # Temporary folder in container:
+        temp_dir = Path(f"/tmp/{folder_name}")
+        temp_dir.mkdir(parents=True,exist_ok=True)
+        if not file_name:
+            return Path(temp_dir)
+        return Path(temp_dir / file_name)
 
-                # Unifying names
-                result = self.name_unifier(result)
+    def save_in_supabase_storage(self,file_name:str,file_data,folder_name:str,file_function=None):
 
-                # Keeping only time-related rows
-                result = result[result['Time'].astype(str).str.contains(':', na=False)]
+        local_file_path = self._temp_container("auxiliar",file_name)
 
-                # cleaning columns with only zeros
-                result = self.clean_columns(result)
-
-                all_properties = [property] + other_properties
-                # MELTING keeping the anchor columns Time, weather, file.
-                # melting all Zones variables and all values of those zones variables in one column.
-                id_vars = ['Time', 'Weather', 'File' ] + all_properties
-                print(id_vars)
-                #print(result.columns)
-                # selecting all zone:variables for setting them in just one column
-                value_vars = [col for col in result.columns if col not in id_vars]
-                # Customized Name of the column and value
-                column_variable = 'Zone_Variable'
-                column_values = 'Value'
-                long_result = result.melt(id_vars=id_vars, 
-                                            value_vars=value_vars, 
-                                            var_name=column_variable, 
-                                            value_name=column_values)
-                # splitting Zone Name and Variable Name
-                long_result = self.split_columns(long_result,column_variable,':','Zone','Variable')
-            outpath_sql = self.get_file_output_path(folder_name,"eplusout.sql")
-            if outpath_sql:
-                #self.inspect_sqlite_schema(outpath_sql)
-                geometry = self.get_general_geometry(outpath_sql)
-
-                long_result = self.add_geometry_to_table(long_result,geometry)
-
-                long_result = self.preparing_table(long_result,all_properties)
-
-                long_result = self.save_in_supabase_storage("epluszsz_mod.csv",long_result,self.folder_name,long_result.to_scv)
-
-        return long_result
+        if file_data is not None and not file_data.empty:
+            print(type(file_data))
+            if file_function:
+                file_function(local_file_path, index=False)
+                print(type(file_data))
+            with open(local_file_path, "w") as f:
+                f.write(str(file_data))
+            
+            # Read the local file and upload it to Supabase Storage
+            with open(local_file_path, "rb") as f:
+                self.client.upload(main_folder="output",
+                                   remote_folder=f"{folder_name}/{file_name}",
+                                   file_name=f)
+                
+            print(f"{file_name} uploaded successfully to Supabase bucket: {folder_name}")
+            
+            # Clean up the temporary local file
+            if os.path.exists(local_file_path):
+                os.remove(local_file_path)
+        else:
+            print(f"No new {local_file_path} in supabase generated.")
 
     def preparing_table(self,table, all_properties):
 
-        index_list = ['File', 'Zone', 'Variable', 'Weather', 'Area', 'Volume' ] + all_properties
+        #index_list = ['File', 'Zone', 'Variable', 'Weather', 'Area', 'Volume' ] + all_properties
+        index_list = ['File', 'Zone', 'Variable', 'Weather'] + all_properties
 
         pivoted = table.pivot_table(
             index=index_list,
@@ -293,7 +317,9 @@ class SimulationData:
 
     def get_file_output_path(self,folder_name,file_name:str):
 
-        file_binary = self.client("output",folder_name,file_name)
+        final_path = f"{folder_name}/{file_name}"
+
+        file_binary = self.client.retrieve("output",final_path)
 
         # 1. Save temporarily to local ephemeral storage (/tmp/)
         local_file_path = self._temp_container(file_name,file_name)
