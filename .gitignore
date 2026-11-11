@@ -76,6 +76,7 @@ flake.*
 # .tfstate files
 *.tfstate
 *.tfstate.*
+*.tf.*
 
 # Exclude tfvars files containing secrets (keep sample templates tracked if safe)
 terraform.tfvars

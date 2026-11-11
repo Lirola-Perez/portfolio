@@ -28,8 +28,11 @@ resource "google_project_iam_member" "cloud_run_artifact_registry" {
 
 # the 5 microservices pointing to GHCR artifacts (GitHub)
 locals {
-  microservices = {
-    "service-ui"          = "ghcr.io/lirola-perez/portfolio/service_ui:master"
+  web_services = {
+    "service-ui" = "ghcr.io/lirola-perez/portfolio/service_ui:master"
+  }
+
+  batch_jobs = {
     "service-core"        = "ghcr.io/lirola-perez/portfolio/service_core:master"
     "service-runner"      = "ghcr.io/lirola-perez/portfolio/service_runner:master"
     "service-postprocess" = "ghcr.io/lirola-perez/portfolio/service_postprocess:master"
@@ -37,8 +40,9 @@ locals {
   }
 }
 
-resource "google_cloud_run_v2_service" "services" {
-  for_each = local.microservices
+# Frontend microservice
+resource "google_cloud_run_v2_service" "web_service" {
+  for_each = local.web_services
 
   name     = each.key
   location = var.gcp_region
@@ -79,6 +83,49 @@ resource "google_cloud_run_v2_service" "services" {
       }
     }
   }
+}
+
+# Backend worker jobs (no ports requirements)
+resource "google_cloud_run_v2_job" "batch_job" {
+  for_each = local.batch_jobs
+
+  name     = each.key
+  location = var.gcp_region
+
+  depends_on = [google_artifact_registry_repository.cache]
+
+  # template for job
+  template {
+    # template for tasks
+    # jobs does not need scaling. One time job.
+    template {
+      containers {
+        image = "europe-west1-docker.pkg.dev/${var.gcp_project_id}/cache/${each.value}"
+
+        env {
+          name  = "SUPABASE_URL"
+          value = var.supabase_url
+        }
+        env {
+          name  = "SUPABASE_KEY"
+          value = var.supabase_service_role_key
+        }
+
+        env {
+          name  = "DATABASE_URL"
+          value = var.database_url
+        }
+
+        resources {
+          limits = {
+            cpu    = "1000m"
+            memory = "1Gi"
+          }
+        }
+      }
+    }
+  }
+
 }
 
 # Make services publicly accessible as a portfolio showcase
