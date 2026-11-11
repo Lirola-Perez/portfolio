@@ -239,7 +239,7 @@ class SimulationData:
 
         local_file_path = self._temp_container("auxiliar",file_name)
 
-        if file_data is not None and not file_data.empty:
+        if file_data is not None: #and not file_data.empty:
             print(type(file_data))
             if file_function:
                 file_function(local_file_path, index=False)
