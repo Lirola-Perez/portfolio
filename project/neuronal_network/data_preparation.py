@@ -1,20 +1,36 @@
-
 import json
 import os
-
 import pandas as pd
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 
-
 class Input:
-    def __init__(self):
-        self.output_path = os.getenv("OUTPUT_PATH", "common_storage/output")
-        self.storage_path = os.getenv("STORAGE_PATH", "common_storage")
+    def __init__(self, storage_client):
+        # self.output_path = os.getenv("OUTPUT_PATH", "common_storage/output")
+        # self.storage_path = os.getenv("STORAGE_PATH", "common_storage")
+        self.client = storage_client
+        file_name = "master_training_data.parquet"
+        
         try:
-            file_path = os.path.join(self.output_path,"master_training_data.parquet")
-            print(file_path)
-            self.data = pd.read_parquet(file_path)
-            #print(self.data)
+            file_binary = self.client.retrieve(main_folder="output",
+                                 file_name= f"output/{file_name}")
+
+            print(f"Downloaded bytes length: {len(file_binary) if file_binary else 'None'}")
+            print(f"First 100 bytes: {file_binary[:100] if file_binary else 'Empty'}")
+            
+            # file_path = os.path.join(self.output_path,"master_training_data.parquet")
+            # print(file_path)
+            temp_local_file = self._temp_container(folder_name="tmp",
+                                                   file_name=file_name)
+            temp_local_file.write_bytes(file_binary)
+            self.data = pd.read_parquet(str(temp_local_file))
+
+            # with open(temp_local_file, "wb") as f:
+            #     f.write(file_binary)
+            #     self.data = pd.read_parquet(f)
+            #     print(self.data)
+            #     return self.data
+
         except FileNotFoundError:
             print("File Not Found. Be sure all simulations are 'Processed'.")
 
@@ -40,16 +56,27 @@ class Input:
         x_matrix = self.df.drop(columns=y_matrix)
         column_names = list(x_matrix.columns)
 
+        file_name = "column_list.json"
         if column_names:
-            column_path = os.path.join(self.output_path,"column_list.json")
-            print(column_path)
-            with open(column_path, "w") as f:
+            #column_path = os.path.join(self.output_path,"column_list.json")
+            temp_local_file = self._temp_container(folder_name="tmp",
+                                                file_name=file_name)
+            print(temp_local_file)
+            with open(temp_local_file, "w") as f:
                 json.dump(column_names,f)
+                self.client.upload(main_folder="output",
+                                   remote_folder=file_name ,
+                                   file_name=f)
 
         y = y_matrix.to_numpy()
         x = x_matrix.to_numpy()
 
         return x,y
 
-
-
+    def _temp_container(self,folder_name:str,file_name= None):
+        # Temporary folder in container:
+        temp_dir = Path(f"/tmp/{folder_name}")
+        temp_dir.mkdir(parents=True,exist_ok=True)
+        if not file_name:
+            return Path(temp_dir)
+        return Path(temp_dir / file_name)

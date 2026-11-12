@@ -1,12 +1,16 @@
 import os
-
 import joblib
 from core import NeuronalNetwork
 from data_preparation import Input
 from sklearn.preprocessing import StandardScaler
+from backend_linker import SupabaseStorage
 
-storage_path = os.getenv("STORAGE_PATH", "/common_storage/")
-data = Input()
+#storage_path = os.getenv("STORAGE_PATH", "/common_storage/")
+
+storage_client = SupabaseStorage()
+
+data = Input(storage_client)
+
 x,y = data.one_hot()
 # splitting the data
 X_train, X_test, Y_train, Y_test = data.separating(x,y)
@@ -26,12 +30,18 @@ print("X_test shape:", X_test.shape)    # Probably showing (N, 14)
 # Apply standarization to the INPUT DATA
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
-joblib.dump(scaler, os.path.join(storage_path, 'scaler_x.pkl'))
+# joblib.dump(scaler, os.path.join(storage_path, 'scaler_x.pkl'))
+temp_local_path_scaler_x = data._temp_container("tmp","scaler_x.pkl")
+
+storage_client.upload("output",f"model/{temp_local_path_scaler_x}",X_test_scaled)
 
 # EXCEPTION: If OUPUT data is very heterogeneuos -> Standarize
 Y_train_scaled = scaler.fit_transform(Y_train)
 Y_test_scaled = scaler.transform(Y_test)
-joblib.dump(scaler, os.path.join(storage_path, 'scaler_y.pkl'))
+#joblib.dump(scaler, os.path.join(storage_path, 'scaler_y.pkl'))
+temp_local_path_scaler_y = data._temp_container("tmp","scaler_y.pkl")
+
+storage_client.upload("output",f"model/{temp_local_path_scaler_x}",Y_test_scaled)
 
 # Preparing the model:
 # DESCRIPTION:

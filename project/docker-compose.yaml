@@ -52,6 +52,8 @@ services:
         condition: service_completed_successfully
     environment:
       - PYTHONUNBUFFERED=1
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
     env_file:
       - .env # Points the main folder
     # Mounting volume for commoon files

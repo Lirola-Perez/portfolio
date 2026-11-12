@@ -239,19 +239,22 @@ class SimulationData:
 
         local_file_path = self._temp_container("auxiliar",file_name)
 
-        if file_data is not None: #and not file_data.empty:
-            print(type(file_data))
+        if file_data is not None:
             if file_function:
+                # with a function (method) the effects is "saved" automatic
                 file_function(local_file_path, index=False)
-                print(type(file_data))
-            with open(local_file_path, "w") as f:
-                f.write(str(file_data))
+            else:
+                # with other cases, it is needed to pass the data to a file
+                with open(local_file_path, "w") as f:
+                    f.write(str(file_data))
             
-            # Read the local file and upload it to Supabase Storage
+            # Open and upload the file bytes to Supabase Storage
             with open(local_file_path, "rb") as f:
-                self.client.upload(main_folder="output",
-                                   remote_folder=f"{folder_name}/{file_name}",
-                                   file_name=f)
+                self.client.upload(
+                    main_folder="output",
+                    remote_folder=f"{folder_name}/{file_name}",
+                    file_name=f
+                )
                 
             print(f"{file_name} uploaded successfully to Supabase bucket: {folder_name}")
             
