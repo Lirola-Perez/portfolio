@@ -1,4 +1,5 @@
 import os
+import pickle
 from backend_linker import SupabaseStorage
 import tensorflow as tf
 from pathlib import Path
@@ -38,8 +39,7 @@ class NeuronalNetwork:
         self.model.save(model_path)                           # Native Keras save
 
         client = SupabaseStorage()
-        with open(model_path,"wb") as f:
-            f.write(self.model)
+        with open(model_path,"rb") as f:
             client.upload(main_folder="output",remote_folder=f"model/{file_name}",file_name=f)
             print(f"Model {model_path} saved successfully.")
 

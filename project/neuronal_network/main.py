@@ -1,5 +1,6 @@
 import os
 import joblib
+import pickle
 from core import NeuronalNetwork
 from data_preparation import Input
 from sklearn.preprocessing import StandardScaler
@@ -30,18 +31,28 @@ print("X_test shape:", X_test.shape)    # Probably showing (N, 14)
 # Apply standarization to the INPUT DATA
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
+scaler_x_file_name = "scaler_x.pkl"
+scaler_y_file_name = "scaler_y.pkl"
 # joblib.dump(scaler, os.path.join(storage_path, 'scaler_x.pkl'))
-temp_local_path_scaler_x = data._temp_container("tmp","scaler_x.pkl")
+temp_local_path_scaler_x = data._temp_container("tmp",scaler_x_file_name)
 
-storage_client.upload("output",f"model/{temp_local_path_scaler_x}",X_test_scaled)
+with open(temp_local_path_scaler_x, "wb") as f:
+    pickle.dump(X_test_scaled,f)
+
+with open(temp_local_path_scaler_x, "rb") as f:
+    storage_client.upload("output",f"model/{scaler_x_file_name}",f)
 
 # EXCEPTION: If OUPUT data is very heterogeneuos -> Standarize
 Y_train_scaled = scaler.fit_transform(Y_train)
 Y_test_scaled = scaler.transform(Y_test)
 #joblib.dump(scaler, os.path.join(storage_path, 'scaler_y.pkl'))
-temp_local_path_scaler_y = data._temp_container("tmp","scaler_y.pkl")
+temp_local_path_scaler_y = data._temp_container("tmp",scaler_y_file_name)
 
-storage_client.upload("output",f"model/{temp_local_path_scaler_x}",Y_test_scaled)
+with open(temp_local_path_scaler_y, "wb") as f:
+    pickle.dump(Y_test_scaled,f)
+
+with open(temp_local_path_scaler_y, "rb") as f:
+    storage_client.upload("output",f"model/{scaler_y_file_name}",f)
 
 # Preparing the model:
 # DESCRIPTION:

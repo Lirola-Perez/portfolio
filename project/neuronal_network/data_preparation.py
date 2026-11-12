@@ -3,11 +3,11 @@ import os
 import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import train_test_split
+from sqlalchemy import column
 
 class Input:
     def __init__(self, storage_client):
-        # self.output_path = os.getenv("OUTPUT_PATH", "common_storage/output")
-        # self.storage_path = os.getenv("STORAGE_PATH", "common_storage")
+
         self.client = storage_client
         file_name = "master_training_data.parquet"
         
@@ -24,12 +24,6 @@ class Input:
                                                    file_name=file_name)
             temp_local_file.write_bytes(file_binary)
             self.data = pd.read_parquet(str(temp_local_file))
-
-            # with open(temp_local_file, "wb") as f:
-            #     f.write(file_binary)
-            #     self.data = pd.read_parquet(f)
-            #     print(self.data)
-            #     return self.data
 
         except FileNotFoundError:
             print("File Not Found. Be sure all simulations are 'Processed'.")
@@ -62,10 +56,13 @@ class Input:
             temp_local_file = self._temp_container(folder_name="tmp",
                                                 file_name=file_name)
             print(temp_local_file)
+            # Writing the file
             with open(temp_local_file, "w") as f:
                 json.dump(column_names,f)
+            # Opening the file as binary for uploading in supabase
+            with open(temp_local_file, "rb") as f:
                 self.client.upload(main_folder="output",
-                                   remote_folder=file_name ,
+                                   remote_folder=f"output/{file_name}" ,
                                    file_name=f)
 
         y = y_matrix.to_numpy()
