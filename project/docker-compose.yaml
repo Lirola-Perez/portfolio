@@ -69,11 +69,8 @@ services:
     env_file:
       - .env # Points the main folder
     ports:
-      - "2001:8080" # localhost=2001 
+      - "2001:8000" # localhost=2001 
     environment:
-      - CORE_URL=http://core-service:8001
-      - RUNNER_URL=http://runner-service:8002
-      - POST_PROCESS_URL=http://postprocess-service:8003
       - PYTHONUNBUFFERED=1
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}

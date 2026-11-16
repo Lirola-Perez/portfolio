@@ -2,11 +2,11 @@ import json
 import os
 from pathlib import Path
 from typing import Annotated
-
-import joblib
+from numpy import byte
 import pandas as pd
 import tensorflow as tf
 import pickle
+import asyncio
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -95,23 +95,26 @@ async def calculate_prediction(
     #print(data_input)
     #print(training_columns)
 
-    # Applying the trained scalers:
+    # retrieving from supabase:
     scaler_input_temp = supabase.retrieve("output",f"model/{scaler_x_file_name}")
-    temp_file_scaler_x = _temp_container("scalers","scaler_x.pkl")
-    with open(temp_file_scaler_x, "rb") as f:
-        scaler_input = pickle.dump(scaler_input_temp,f)
+    # inilizializing the temporal folder and file
+    temp_file_scaler_x = _temp_container("scalers",scaler_x_file_name)
+    # Async function: writing file and loading
+    scaler_input = await asyncio.to_thread(
+        _load_to_file, scaler_input_temp, temp_file_scaler_x
+    )
+    # retrieving from supabase, temporal folder+file, async-function and loading
     scaler_output_temp = supabase.retrieve("output", f"model/{scaler_y_file_name}")
-    temp_file_scaler_y = _temp_container("scalers","scaler_y.pkl")
-    with open(temp_file_scaler_y, "rb") as f:
-        scaler_output = pickle.dump(scaler_output_temp,f)
-    # scaler_input = joblib.load(scaler_input_path) if os.path.exists(scaler_input_path) else None
-    # scaler_output = joblib.load(scaler_output_path) if os.path.exists(scaler_output_path) else None
-
+    temp_file_scaler_y = _temp_container("scalers",scaler_y_file_name)
+    scaler_output = await asyncio.to_thread(
+        _load_to_file, scaler_output_temp, temp_file_scaler_y
+    )
+    
     if scaler_input:
         data_input = scaler_input.transform(data_input)
 
-    # Applying the trained model:
-    model = use_model()
+    # loading the model with async function:
+    model = await asyncio.to_thread(use_model)
     if model:
         prediction_result = model.predict(data_input)[0]
         # 2. If it's a 1D array or list, ensure it's 2D for the scaler:
@@ -144,8 +147,7 @@ def use_model():
     model_path = f"output/model/{model_file_name}"
     model_file = supabase.retrieve("output",f"model/{model_file_name}")
     model_file_temp = _temp_container("model","model.keras")
-    with open(model_file_temp, "rb") as f:
-        model_file_final = pickle.dump(model_file,f)
+    model_file_final =_load_to_file(model_file,model_file_temp)
 
     if not model_file_final:
         print(f"No model found at supabase folder output/model/{model_file_name}. Please train or upload one first.")
@@ -208,4 +210,13 @@ def _temp_container(folder_name:str,file_name= None):
         if not file_name:
             return temp_dir
         return f"{temp_dir}/{file_name}"
+
+def _load_to_file(data,temp_path):
+    # takes the binary retrieved from supabase, writes it in file and loads the file as return
+    if isinstance(data, (bytes,bytearray)):
+        temp_path.write_bytes(data)
+        with open(temp_path,"rb") as f:
+            return pickle.load(f)
+    else:
+        return data
 
