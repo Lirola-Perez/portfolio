@@ -2,7 +2,6 @@ import json
 import os
 from pathlib import Path
 from typing import Annotated
-from numpy import byte
 import pandas as pd
 import tensorflow as tf
 import pickle
@@ -48,8 +47,8 @@ if os.path.exists(columns_path):
 else:
     # Safe mock fallback for CI / testing when upstream artifacts aren't generated yet
     training_columns = [
-        "Area", 
-        "Volume", 
+        # "Area", 
+        # "Volume", 
         "Thickness", 
         "Conductivity", 
         "Weather_Madrid", 
@@ -71,14 +70,15 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 class PredictionInput(BaseModel):
     Weather: str
     Target_variable: str
-    Area: float = Field(..., gt=0, description="Area of the room or zone.")
+    #Area: float = Field(..., gt=0, description="Area of the room or zone.")
     Height: float = Field(..., gt=0, description="Height of the room or zone.")
     Conductivity: float
     Thickness: float
     
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
-    html = templates.TemplateResponse(request=request,name="index.html",context={"request":request, "prediction":None})
+    print("ROUTE HIT: GET /")
+    html = templates.TemplateResponse(request=request,name="index.html",context={"request":request, "Prediction":None})
     return html
 
 @app.post("/", response_class=HTMLResponse)
@@ -87,8 +87,11 @@ async def calculate_prediction(
     # FastAPI automatically maps the HTML form data into the pydantic model.
     form_data: Annotated[PredictionInput, Form()]
 ):
+    print("ROUTE HIT: POST /", form_data.Target_variable)
     # Pydantic validates Area and volume are valid floats > 0
-    volume = form_data.Area * form_data.Height
+    # volume = form_data.Area * form_data.Height
+    Area = 100
+    volume = Area * form_data.Height
 
     # Taking the selected input vector for the prediction
     data_input = data_preparation(form_data,volume,columns_order=training_columns)
@@ -96,7 +99,8 @@ async def calculate_prediction(
     #print(training_columns)
 
     # retrieving from supabase:
-    scaler_input_temp = supabase.retrieve("output",f"model/{scaler_x_file_name}")
+    scaler_input_temp = supabase.retrieve(main_folder="output",
+                                          file_name=f"model/{scaler_x_file_name}")
     # inilizializing the temporal folder and file
     temp_file_scaler_x = _temp_container("scalers",scaler_x_file_name)
     # Async function: writing file and loading
@@ -104,13 +108,16 @@ async def calculate_prediction(
         _load_to_file, scaler_input_temp, temp_file_scaler_x
     )
     # retrieving from supabase, temporal folder+file, async-function and loading
-    scaler_output_temp = supabase.retrieve("output", f"model/{scaler_y_file_name}")
+    scaler_output_temp = supabase.retrieve(main_folder="output", 
+                                           file_name=f"model/{scaler_y_file_name}")
     temp_file_scaler_y = _temp_container("scalers",scaler_y_file_name)
     scaler_output = await asyncio.to_thread(
         _load_to_file, scaler_output_temp, temp_file_scaler_y
     )
-    
-    if scaler_input:
+
+    print(type(scaler_input), getattr(scaler_input, "shape", None))
+
+    if scaler_input is not None:
         data_input = scaler_input.transform(data_input)
 
     # loading the model with async function:
@@ -124,7 +131,7 @@ async def calculate_prediction(
             prediction_result = scaler_output.inverse_transform(prediction_result)
     else:
         print("FAKE PREDICTION!")
-        prediction_result = round(form_data.Area * 0.45 + form_data.Height * 0.12, 2)
+        prediction_result = round(Area * 0.45 + form_data.Height * 0.12, 2)
 
     print(f"{prediction_result}")
 
@@ -133,9 +140,9 @@ async def calculate_prediction(
         "Request": request,
         "Prediction": prediction_result,
         # pass form_data back to keep fields filled out
-        "Area": form_data.Area,
+        #"Area": form_data.Area,
         "Height": form_data.Height,
-        "Volume": volume,
+        #"Volume": volume,
         "Weather": form_data.Weather,
         "Target": form_data.Target_variable,
         "Thickness": form_data.Thickness,
@@ -146,16 +153,17 @@ def use_model():
     """This function gathers the trained model ready to use for predictions."""
     model_path = f"output/model/{model_file_name}"
     model_file = supabase.retrieve("output",f"model/{model_file_name}")
-    model_file_temp = _temp_container("model","model.keras")
-    model_file_final =_load_to_file(model_file,model_file_temp)
+    model_file_final = _temp_container("model","model.keras")
+    # writing directly in the created "empty" model.keras
+    model_file_final.write_bytes(model_file)
 
     if not model_file_final:
-        print(f"No model found at supabase folder output/model/{model_file_name}. Please train or upload one first.")
+        print(f"No model found at supabase folder {model_path}. Please train or upload one first.")
         return None
     
     try:
         model = tf.keras.models.load_model(model_file_final)
-        print(f"Model successfully loaded from {model_file_final}.")
+        print(f"Model successfully loaded from {model_path}.")
         return model
     
     except (FileNotFoundError, OSError) as e:
@@ -209,7 +217,7 @@ def _temp_container(folder_name:str,file_name= None):
         temp_dir.mkdir(parents=True,exist_ok=True)
         if not file_name:
             return temp_dir
-        return f"{temp_dir}/{file_name}"
+        return Path(temp_dir/file_name)
 
 def _load_to_file(data,temp_path):
     # takes the binary retrieved from supabase, writes it in file and loads the file as return
