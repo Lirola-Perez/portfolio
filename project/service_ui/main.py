@@ -2,15 +2,16 @@ import json
 import os
 from pathlib import Path
 from typing import Annotated
-from supabase import Client, create_client
 
 import joblib
 import pandas as pd
 import tensorflow as tf
+import pickle
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+from backend_linker import SupabaseStorage
 
 # Get the directory where main.py is currently located
 BASE_DIR = Path(__file__).resolve().parent
@@ -24,19 +25,21 @@ pd.set_option('display.width', 1000)
 # 3. (Optional) Show all rows if it's cutting off vertically too
 pd.set_option('display.max_rows', None)
 
-STORAGE_PATH = os.getenv("STORAGE_PATH", "/common_storage/")
-OUTPUT_PATH = os.getenv("OUTPUT_PATH", "/common_storage/output")
-SUPABASE_URL = os.getenv("SUPABASE_URL", "Missing_SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "Missing_SUPABASE_KEY")
+STORAGE_PATH = os.getenv("STORAGE_PATH", "/app/storage")
+OUTPUT_PATH = os.getenv("OUTPUT_PATH", "/app/storage/output")
 
 model_path = os.path.join(STORAGE_PATH,"model.keras")
 scaler_input_path = os.path.join(STORAGE_PATH,"scaler_x.pkl")
 scaler_output_path = os.path.join(STORAGE_PATH,"scaler_y.pkl")
 columns_path = os.path.join(OUTPUT_PATH,"column_list.json")
+scaler_x_file_name = "scaler_x.pkl"
+scaler_y_file_name = "scaler_y.pkl"
+model_file_name = "model.keras"
 
 
 # 1. Initialize Supabase using your environment variables
-supabase: Client = create_client(supabase_url=SUPABASE_URL, supabase_key=SUPABASE_KEY)
+#supabase: Client = create_client(supabase_url=SUPABASE_URL, supabase_key=SUPABASE_KEY)
+supabase = SupabaseStorage()
 
 # CONDITIONAL: used for handle CI Pipeline tests 
 if os.path.exists(columns_path):
@@ -93,8 +96,17 @@ async def calculate_prediction(
     #print(training_columns)
 
     # Applying the trained scalers:
-    scaler_input = joblib.load(scaler_input_path) if os.path.exists(scaler_input_path) else None
-    scaler_output = joblib.load(scaler_output_path) if os.path.exists(scaler_output_path) else None
+    scaler_input_temp = supabase.retrieve("output",f"model/{scaler_x_file_name}")
+    temp_file_scaler_x = _temp_container("scalers","scaler_x.pkl")
+    with open(temp_file_scaler_x, "rb") as f:
+        scaler_input = pickle.dump(scaler_input_temp,f)
+    scaler_output_temp = supabase.retrieve("output", f"model/{scaler_y_file_name}")
+    temp_file_scaler_y = _temp_container("scalers","scaler_y.pkl")
+    with open(temp_file_scaler_y, "rb") as f:
+        scaler_output = pickle.dump(scaler_output_temp,f)
+    # scaler_input = joblib.load(scaler_input_path) if os.path.exists(scaler_input_path) else None
+    # scaler_output = joblib.load(scaler_output_path) if os.path.exists(scaler_output_path) else None
+
     if scaler_input:
         data_input = scaler_input.transform(data_input)
 
@@ -129,17 +141,23 @@ async def calculate_prediction(
 
 def use_model():
     """This function gathers the trained model ready to use for predictions."""
-    if not os.path.exists(model_path):
-        print(f"No model found at {model_path}. Please train or upload one first.")
+    model_path = f"output/model/{model_file_name}"
+    model_file = supabase.retrieve("output",f"model/{model_file_name}")
+    model_file_temp = _temp_container("model","model.keras")
+    with open(model_file_temp, "rb") as f:
+        model_file_final = pickle.dump(model_file,f)
+
+    if not model_file_final:
+        print(f"No model found at supabase folder output/model/{model_file_name}. Please train or upload one first.")
         return None
     
     try:
-        model = tf.keras.models.load_model(os.path.join(STORAGE_PATH, 'model.keras'))
-        print(f"Model successfully loaded from {model_path}.")
+        model = tf.keras.models.load_model(model_file_final)
+        print(f"Model successfully loaded from {model_file_final}.")
         return model
     
     except (FileNotFoundError, OSError) as e:
-        print(f"Critical: Model file missing or unreadable at {model_path}: {e}")
+        print(f"Critical: Model file missing or unreadable at {model_path} in supabase: {e}")
         return None
 
     except (ValueError, KeyError) as e:
@@ -182,4 +200,12 @@ def data_preparation(form_data:Annotated, volume:float, columns_order=training_c
     input_df = pd.DataFrame([feature_dict])
     
     return input_df
+
+def _temp_container(folder_name:str,file_name= None):
+        # Temporary folder in container:
+        temp_dir = Path(f"/tmp/{folder_name}")
+        temp_dir.mkdir(parents=True,exist_ok=True)
+        if not file_name:
+            return temp_dir
+        return f"{temp_dir}/{file_name}"
 
