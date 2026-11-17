@@ -3,13 +3,18 @@ import os
 import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sqlalchemy import column
+import pickle
+import numpy as np
+
 
 class Input:
     def __init__(self, storage_client):
 
         self.client = storage_client
         file_name = "master_training_data.parquet"
+        self.column_names = []
         
         try:
             file_binary = self.client.retrieve(main_folder="output",
@@ -31,6 +36,58 @@ class Input:
     def separating(self,x,y,size=0.3):
         return train_test_split(x,y,test_size=size, random_state=42)
 
+    def scaler(self,data,columns=None,mode:str="train",fitted_scaler=None,data_class: str | None = None):
+        if mode == "train":
+            scaler = StandardScaler()
+        else:
+            if fitted_scaler is None:
+                raise ValueError("fitted_scaler must be provided when mode='test'")
+            scaler = fitted_scaler
+
+        data_formated = data.to_numpy(dtype=np.float32) if hasattr(data,"to_numpy") else np.array(data,dtype=np.float32)
+
+        data_scaled = None
+        if mode is None:
+            print(f"WARNING: Please,data {mode} is not defined ['test' or 'train']")
+            return
+        if columns:
+            index_to_scale = [self.column_names.index(name) for name in columns]
+            index_untouchted = [i for i in range(len(self.column_names)) if i not in index_to_scale]
+
+            data_scaled = data_formated.copy().astype(np.float32)
+            if mode == "train":
+                data_scaled[:,index_to_scale] = scaler.fit_transform(data_formated[:,index_to_scale])
+                print(f"Data {mode} shape: {data_formated.shape}")
+            elif mode == "test":
+                data_scaled[:,index_to_scale] = scaler.transform(data_formated[:,index_to_scale])
+                print(f"Data {mode} shape: {data_formated.shape}")
+        else:
+            if mode == "train":
+                print(f"Data {mode} shape: {data_formated.shape}")
+                data_scaled = scaler.fit_transform(data_formated)
+            elif mode == "test":
+                print(f"Data {mode} shape: {data_formated.shape}")
+                data_scaled = scaler.transform(data_formated)
+
+        if data_class is not None:
+            print(f"Updating scaler_{mode}.pkl")
+            scaler_file_name = f"scaler_{mode}_{data_class}.pkl"
+            # Creation of temporal folder:
+            # joblib.dump(scaler_x, os.path.join(storage_path, 'scaler_x.pkl'))
+            temp_local_path_scaler = self._temp_container("tmp",scaler_file_name)
+            # Dumping the scaler in the temporary file
+            with open(temp_local_path_scaler, "wb") as f:
+                pickle.dump(scaler,f)
+            # Uploading the file to backend via client:
+            with open(temp_local_path_scaler, "rb") as f:
+                self.client.upload(
+                    main_folder="output",
+                    remote_folder=f"model/{scaler_file_name}",
+                    file_name=f)
+        return data_scaled, scaler
+
+    def inverted_scaler(self,scaler,data):
+        return scaler.inverse_transform(data)
 
     def one_hot(self):
         # Drop rows: missing values
@@ -48,17 +105,18 @@ class Input:
 
         # Selecting X matrix all other numbered columns except time ones.
         x_matrix = self.df.drop(columns=y_matrix)
-        column_names = list(x_matrix.columns)
+        self.column_names = list(x_matrix.columns)
 
         file_name = "column_list.json"
-        if column_names:
+        if self.column_names:
+            print(self.column_names)
             #column_path = os.path.join(self.output_path,"column_list.json")
             temp_local_file = self._temp_container(folder_name="tmp",
                                                 file_name=file_name)
             print(temp_local_file)
             # Writing the file
             with open(temp_local_file, "w") as f:
-                json.dump(column_names,f)
+                json.dump(self.column_names,f)
             # Opening the file as binary for uploading in supabase
             with open(temp_local_file, "rb") as f:
                 self.client.upload(main_folder="output",

@@ -1,7 +1,6 @@
-import os
-import joblib
-import pickle
+import numpy as np
 from core import NeuronalNetwork
+import tensorflow as tf
 from data_preparation import Input
 from sklearn.preprocessing import StandardScaler
 from backend_linker import SupabaseStorage
@@ -14,7 +13,7 @@ data = Input(storage_client)
 
 x,y = data.one_hot()
 # splitting the data
-X_train, X_test, Y_train, Y_test = data.separating(x,y)
+X_train, X_test, Y_train, Y_test = data.separating(x,y,size=0.2)
 
 # Extracting dimensions for the model:
 X_features_dim = X_train.shape[1]
@@ -22,64 +21,60 @@ X_features_dim_test = X_test.shape[1]
 Y_time_dim = Y_train.shape[1]
 print(f"trained dim:{X_features_dim}, test dim:{X_features_dim_test}")
 
-# Normalizing and Standarizing
-scaler_x = StandardScaler()
-scaler_y = StandardScaler()
-
-print("X_train shape:", X_train.shape)  # Should show (N, 144)
-print("X_test shape:", X_test.shape)    # Probably showing (N, 14)
-
 # ----- SCALER X -----------------------
-# Apply standarization to the INPUT DATA
-# 'scaler_x' will gather the weights
-# fit_transform will 'convert' the results 'scaled'
-X_train_scaled = scaler_x.fit_transform(X_train)
-X_test_scaled = scaler_x.transform(X_test)
+# As the input data X has many columns 0 or 1 (labels)
+# those columns dont need Standarized
+columns_to_scale = ["Thickness", "Conductivity"]
+X_train_scaled,scaler_x = data.scaler(
+    data=X_train,
+    columns=columns_to_scale,
+    mode="train",
+    fitted_scaler=None,
+    data_class="input")
 
-# Saving the scaler_x to be uploaded
-scaler_x_file_name = "scaler_x.pkl"
-# Creation of temporal folder:
-# joblib.dump(scaler_x, os.path.join(storage_path, 'scaler_x.pkl'))
-temp_local_path_scaler_x = data._temp_container("tmp",scaler_x_file_name)
-# Dumping the scaler in the temporary file
-with open(temp_local_path_scaler_x, "wb") as f:
-    pickle.dump(scaler_x,f)
-# Uploading the file to backend via client:
-with open(temp_local_path_scaler_x, "rb") as f:
-    storage_client.upload(main_folder="output",
-                          remote_folder=f"model/{scaler_x_file_name}",
-                          file_name=f)
+X_test_scaled,_ = data.scaler(
+    data=X_test,
+    columns=columns_to_scale,
+    mode="test",
+    fitted_scaler=scaler_x)
 
-# ----- SCALER Y -----------------------
-scaler_y_file_name = "scaler_y.pkl"
-# EXCEPTION: If OUPUT data is very heterogeneuos -> Standarize
-Y_train_scaled = scaler_y.fit_transform(Y_train)
-Y_test_scaled = scaler_y.transform(Y_test)
-#joblib.dump(scaler_x, os.path.join(storage_path, 'scaler_y.pkl'))
-temp_local_path_scaler_y = data._temp_container("tmp",scaler_y_file_name)
+Y_train_scaled,scaler_y = data.scaler(
+    data=Y_train,
+    columns=None,
+    mode="train",
+    fitted_scaler=None,
+    data_class="output")
 
-with open(temp_local_path_scaler_y, "wb") as f:
-    pickle.dump(scaler_y,f)
-
-with open(temp_local_path_scaler_y, "rb") as f:
-    storage_client.upload(main_folder="output",
-                          remote_folder=f"model/{scaler_y_file_name}",
-                          file_name=f)
+Y_test_scaled,_ = data.scaler(
+    data=Y_test,
+    columns=None,
+    mode="test",
+    fitted_scaler=scaler_y)
 
 # ----- MODEL -----------------------
 # Preparing the model:
-# DESCRIPTION:
-# 105.300 weights (trainable parameters)
-# net with 652 neurons total
 model = NeuronalNetwork()
 model.compiler(X_features_dim,Y_time_dim)
 
 # Training the model:
 model.training(X_train_scaled,Y_train_scaled,epochs=1000)
 
+y_test_scaled_predicted = model.predict(X_test_scaled)
+
 # Evaluating the model:
-results = model.evaluate(X_test_scaled,Y_test_scaled)
+results = model.evaluate(X_test_scaled,Y_test_scaled, verbose=0)
 print(f"test loss: {results[0]} \nMSE: {results[1]}")
+
+y_pred = data.inverted_scaler(scaler=scaler_y,data=y_test_scaled_predicted)
+#scaler_y.inverse_transform(y_test_scaled_predicted)
+# y_true = scaler_y.inverse_transform(Y_test_scaled)
+y_true = data.inverted_scaler(scaler=scaler_y,data=Y_test_scaled)
+
+print("y_pred_scaled shape:", y_test_scaled_predicted.shape)
+print("y_pred min / max / std:", y_pred.min(), y_pred.max(), y_pred.std())
+print("y_true min / max / std:", y_true.min(), y_true.max(), y_true.std())
+print("First sample y_true[:5]:", np.round(y_true[0, :5], 3))
+print("First sample y_pred[:5]:", np.round(y_pred[0, :5], 3))
 
 # Saving the model:
 model.save_model()

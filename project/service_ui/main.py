@@ -34,34 +34,11 @@ columns_path = os.path.join(OUTPUT_PATH,"column_list.json")
 scaler_x_file_name = "scaler_x.pkl"
 scaler_y_file_name = "scaler_y.pkl"
 model_file_name = "model.keras"
-
+column_file = "column_list.json"
 
 # 1. Initialize Supabase using your environment variables
 #supabase: Client = create_client(supabase_url=SUPABASE_URL, supabase_key=SUPABASE_KEY)
 supabase = SupabaseStorage()
-
-# CONDITIONAL: used for handle CI Pipeline tests 
-if os.path.exists(columns_path):
-    with open(columns_path, "r") as f:
-        training_columns = json.load(f)
-else:
-    # Safe mock fallback for CI / testing when upstream artifacts aren't generated yet
-    training_columns = [
-        # "Area", 
-        # "Volume", 
-        "Thickness", 
-        "Conductivity", 
-        "Weather_Madrid", 
-        "Weather_Potsdam", 
-        "Variable_Cooling Zone Relative Humidity [%]", 
-        "Variable_Cooling Zone Temperature [C]", 
-        "Variable_Des Cool Mass Flow [kg/s]", 
-        "Variable_Des Heat Load [W]", 
-        "Variable_Des Heat Mass Flow [kg/s]", 
-        "Variable_Des Sens Cool Load [W]", 
-        "Variable_Heating Zone Relative Humidity [%]", 
-        "Variable_Heating Zone Temperature [C]"
-    ]
 
 app = FastAPI(title="Energy-Performance Building Simulation Machine Learning Engine")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -78,7 +55,10 @@ class PredictionInput(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     print("ROUTE HIT: GET /")
-    html = templates.TemplateResponse(request=request,name="index.html",context={"request":request, "Prediction":None})
+    html = templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={"request":request, "Prediction":None})
     return html
 
 @app.post("/", response_class=HTMLResponse)
@@ -92,46 +72,66 @@ async def calculate_prediction(
     # volume = form_data.Area * form_data.Height
     Area = 100
     volume = Area * form_data.Height
+    training_columns = ["no values"]
 
-    # Taking the selected input vector for the prediction
+    # --- DOWNLOADING COLUMN LIST -----
+    print(f"PHASE 1: DOWNLOADING column list")
+    training_columns = await asyncio.to_thread(
+        _file_downloader_from_out_folder,
+        "output",
+        column_file)
+    # -------
+    
+    print(f"PHASE 2: PREPARING the data")
     data_input = data_preparation(form_data,volume,columns_order=training_columns)
     #print(data_input)
-    #print(training_columns)
+    print(f"CHECK -> Training columns: {training_columns}")
 
-    # retrieving from supabase:
-    scaler_input_temp = supabase.retrieve(main_folder="output",
-                                          file_name=f"model/{scaler_x_file_name}")
-    # inilizializing the temporal folder and file
-    temp_file_scaler_x = _temp_container("scalers",scaler_x_file_name)
-    # Async function: writing file and loading
-    scaler_input = await asyncio.to_thread(
-        _load_to_file, scaler_input_temp, temp_file_scaler_x
-    )
+    # -- DOWNLOADING THE SCALERS ---
+    print(f"PHASE 3: Prepared data. DOWNLOADING the scalers")
     # retrieving from supabase, temporal folder+file, async-function and loading
-    scaler_output_temp = supabase.retrieve(main_folder="output", 
-                                           file_name=f"model/{scaler_y_file_name}")
-    temp_file_scaler_y = _temp_container("scalers",scaler_y_file_name)
+    scaler_input = await asyncio.to_thread(
+            _file_downloader_from_out_folder,
+            "model",
+            scaler_x_file_name)
+
+    # retrieving from supabase, temporal folder+file, async-function and loading
     scaler_output = await asyncio.to_thread(
-        _load_to_file, scaler_output_temp, temp_file_scaler_y
-    )
+        _file_downloader_from_out_folder,
+        "model",
+        scaler_y_file_name)
 
-    print(type(scaler_input), getattr(scaler_input, "shape", None))
+    # CHECK POINT
+    print(f"CHECK -> SCALER FILE TYPE: \n {type(scaler_input)}")
+    print("scaler_input features:", getattr(scaler_input, "n_features_in_", "NOT FITTED"))
+    print("scaler_output features:", getattr(scaler_output, "n_features_in_", "NOT FITTED"))
+    print(scaler_input)
+    # -------------------------------
 
-    if scaler_input is not None:
-        data_input = scaler_input.transform(data_input)
+    if data_input is not None:
+        raw_x = data_input.to_numpy() if hasattr(data_input, "to_numpy") else data_input
+        if scaler_input is not None and hasattr(scaler_input, "transform"):
+            raw_x = scaler_input.transform(raw_x)
 
-    # loading the model with async function:
-    model = await asyncio.to_thread(use_model)
-    if model:
-        prediction_result = model.predict(data_input)[0]
-        # 2. If it's a 1D array or list, ensure it's 2D for the scaler:
-        if scaler_output:
-            if len(prediction_result.shape) == 1:
-                prediction_result = prediction_result.reshape(1, -1)
-            prediction_result = scaler_output.inverse_transform(prediction_result)
+        # loading the model with async function:
+        print(f"PHASE 4: DOWNLOADING the model")
+        model = await asyncio.to_thread(use_model)
+        if model is not None:
+            # CHECK POINT
+            print("model input/output shapes:", model.input_shape, model.output_shape)
+            # ---- PREDICTION ----------------------
+            print(f"PHASE 5: PREDICTION")
+            prediction_result = model.predict(raw_x, verbose=0)[0]
+            # 2. If it's a 1D array or list, ensure it's 2D for the scaler:
+            if scaler_output is not None and hasattr(scaler_input, "transform"):
+                if len(prediction_result.shape) == 1:
+                    prediction_result = prediction_result.reshape(1, -1)
+                prediction_result = scaler_output.inverse_transform(prediction_result)
+        else:
+            print("FAKE PREDICTION!")
+            prediction_result = round(Area * 0.45 + form_data.Height * 0.12, 2)
     else:
-        print("FAKE PREDICTION!")
-        prediction_result = round(Area * 0.45 + form_data.Height * 0.12, 2)
+        prediction_result = "Fail to predict"
 
     print(f"{prediction_result}")
 
@@ -152,6 +152,8 @@ async def calculate_prediction(
 def use_model():
     """This function gathers the trained model ready to use for predictions."""
     model_path = f"output/model/{model_file_name}"
+
+    # Model .keras does not use pickle load:
     model_file = supabase.retrieve("output",f"model/{model_file_name}")
     model_file_final = _temp_container("model","model.keras")
     # writing directly in the created "empty" model.keras
@@ -181,35 +183,46 @@ def use_model():
         print(f"Unexpected TensorFlow internal error loading model: {e}")
         return None
 
-def data_preparation(form_data:Annotated, volume:float, columns_order=training_columns):
+def data_preparation(form_data:Annotated, volume:float, columns_order=[]):
     """This function maps and prepares the input data for the model.
         The data should be a vector with same dimension as the training
         set of the model."""
-    feature_dict = {col: 0.0 for col in list(columns_order)}
+    if columns_order is not None:
+        feature_dict = {col: 0.0 and print(f"ORDER COLUMN: {col}") for col in list(columns_order)}
 
-    if "Area" in feature_dict:
-        feature_dict["Area"] = form_data.Area
-    if "Volume" in feature_dict:
-        feature_dict["Volume"] = volume
-    if "Conductivity" in feature_dict:
-        feature_dict["Conductivity"] = form_data.Conductivity
-    if "Thickness" in feature_dict:
-        feature_dict["Thickness"] = form_data.Thickness
+        if "Area" in feature_dict:
+            feature_dict["Area"] = form_data.Area
+        if "Volume" in feature_dict:
+            feature_dict["Volume"] = volume
+        if "Conductivity" in feature_dict:
+            feature_dict["Conductivity"] = form_data.Conductivity
+        if "Thickness" in feature_dict:
+            feature_dict["Thickness"] = form_data.Thickness
+            
+        # Handle Weather or categorical columns if they exist in your training columns
+        weather_col = f"Weather_{form_data.Weather}"
+        if weather_col in feature_dict:
+            feature_dict[weather_col] = 1.0
+            
+        target_col = f"{form_data.Target_variable}"
+        if target_col in feature_dict:
+            feature_dict[target_col] = 1.0
+            print(f"Successfully activated target flag: {target_col} = 1.0")
+
         
-    # Handle Weather or categorical columns if they exist in your training columns
-    weather_col = f"Weather_{form_data.Weather}"
-    if weather_col in feature_dict:
-        feature_dict[weather_col] = 1.0
-        
-    target_col = f"{form_data.Target_variable}"
-    if target_col in feature_dict:
-        feature_dict[target_col] = 1.0
-        print(f"Successfully activated target flag: {target_col} = 1.0")
-    
-    # 2. Convert to a DataFrame (this preserves column names if your model was trained on a DataFrame)
-    input_df = pd.DataFrame([feature_dict])
-    
-    return input_df
+        # 2. Convert to a DataFrame (this preserves column names if your model was trained on a DataFrame)
+        input_df = pd.DataFrame([feature_dict])
+        return input_df
+    else:
+        return None
+
+def _file_downloader_from_out_folder(folder_name,file_name):
+    # retrieving from supabase, temporal folder+file, async-function and loading
+    binary_file_downloaded = supabase.retrieve(main_folder="output", 
+                                            file_name=f"{folder_name}/{file_name}")
+    temp_file = _temp_container(folder_name,file_name)
+    file = _file_loader(binary_file_downloaded, temp_file)
+    return file
 
 def _temp_container(folder_name:str,file_name= None):
         # Temporary folder in container:
@@ -219,12 +232,14 @@ def _temp_container(folder_name:str,file_name= None):
             return temp_dir
         return Path(temp_dir/file_name)
 
-def _load_to_file(data,temp_path):
+def _file_loader(data,temp_path):
     # takes the binary retrieved from supabase, writes it in file and loads the file as return
     if isinstance(data, (bytes,bytearray)):
-        temp_path.write_bytes(data)
-        with open(temp_path,"rb") as f:
-            return pickle.load(f)
+        suffix = Path(temp_path).suffix
+        if suffix == ".pkl":
+            return pickle.loads(data)
+        elif suffix == ".json":
+            return json.loads(data.decode("utf-8"))
     else:
         return data
 
