@@ -183,12 +183,12 @@ def use_model():
         print(f"Unexpected TensorFlow internal error loading model: {e}")
         return None
 
-def data_preparation(form_data:Annotated, volume:float, columns_order=[]):
+def data_preparation(form_data:Annotated, volume:float, columns_order=None):
     """This function maps and prepares the input data for the model.
         The data should be a vector with same dimension as the training
         set of the model."""
     if columns_order is not None:
-        feature_dict = {col: 0.0 and print(f"ORDER COLUMN: {col}") for col in list(columns_order)}
+        feature_dict = {col: 0.0 for col in list(columns_order)}
 
         if "Area" in feature_dict:
             feature_dict["Area"] = form_data.Area

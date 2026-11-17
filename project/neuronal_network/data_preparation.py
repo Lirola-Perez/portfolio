@@ -52,7 +52,7 @@ class Input:
             return
         if columns:
             index_to_scale = [self.column_names.index(name) for name in columns]
-            index_untouchted = [i for i in range(len(self.column_names)) if i not in index_to_scale]
+            #index_untouchted = [i for i in range(len(self.column_names)) if i not in index_to_scale]
 
             data_scaled = data_formated.copy().astype(np.float32)
             if mode == "train":
