@@ -28,11 +28,11 @@ STORAGE_PATH = os.getenv("STORAGE_PATH", "/app/storage")
 OUTPUT_PATH = os.getenv("OUTPUT_PATH", "/app/storage/output")
 
 model_path = os.path.join(STORAGE_PATH,"model.keras")
-scaler_input_path = os.path.join(STORAGE_PATH,"scaler_x.pkl")
-scaler_output_path = os.path.join(STORAGE_PATH,"scaler_y.pkl")
+scaler_input_path = os.path.join(STORAGE_PATH,"scaler_train_input.pkl")
+scaler_output_path = os.path.join(STORAGE_PATH,"scaler_train_output.pkl")
 columns_path = os.path.join(OUTPUT_PATH,"column_list.json")
-scaler_x_file_name = "scaler_x.pkl"
-scaler_y_file_name = "scaler_y.pkl"
+scaler_x_file_name = "scaler_train_input.pkl"
+scaler_y_file_name = "scaler_train_output.pkl"
 model_file_name = "model.keras"
 column_file = "column_list.json"
 
