@@ -74,18 +74,6 @@ if Y_train_scaled is not None and X_train_scaled is not None:
     # graph = Graphics()
     # graph.general_scatter(X_train_scaled)
 
-
-# # ----- TESTING PHASE ---------------
-# test = ModelTesting(X_train_scaled,Y_train_scaled)
-# # Observing the variables.
-# test.variable_separator(X_train_scaled,file_name='X_values_trained')
-# test.variable_separator(Y_train_scaled,file_name='Y_values_trained')
-# # Correlation testing:
-# test.plot_correlation_temp(X_train_scaled)
-# # testing linear model L1 (Lasso) or L2(Ridge)
-# regularizer = test.regularizers(regularizer_type='Ridge',alpha=1)
-# test.variable_separator(regularizer,file_name='Linear_model_testing')
-
 # ----- MODEL -----------------------
 # Preparing the model:
 model = NeuronalNetwork()
@@ -93,6 +81,11 @@ model.compiler(X_features_dim,Y_time_dim)
 
 # Training the model:
 model.training(X_train_scaled,Y_train_scaled,epochs=1000,verbose=0)
+
+# -------------------------
+# 1. Inspect first-layer weight magnitude per input column
+model.coefficient_test(columns=['Thickness', 'Conductivity', 'Weather_Madrid', 'Weather_Potsdam', 'Variable_Cooling Zone Relative Humidity [%]', 'Variable_Cooling Zone Temperature [C]', 'Variable_Des Cool Mass Flow [kg/s]', 'Variable_Des Heat Load [W]', 'Variable_Des Heat Mass Flow [kg/s]', 'Variable_Des Sens Cool Load [W]', 'Variable_Heating Zone Relative Humidity [%]', 'Variable_Heating Zone Temperature [C]'])
+# -----------------------------
 
 y_test_scaled_predicted = model.predict(X_test_scaled)
 

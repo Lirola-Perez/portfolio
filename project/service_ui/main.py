@@ -85,12 +85,14 @@ async def calculate_prediction(
     
     print(f"PHASE 2: PREPARING the data")
     data_input = data_preparation(form_data,volume,columns_order=training_columns)
-    #print(data_input)
+    if data_input is not None:
+        print(f"DATA INPUT: {data_input.shape}")
     print(f"CHECK -> Training columns: {training_columns}")
 
     columns_to_scale = ["Thickness", "Conductivity"]
     if training_columns:
         column_index = [training_columns.index(name) for name in columns_to_scale]
+        print(f"COLUMN INDEXES TO SCALE: {column_index}")
     else:
         column_index = []
 
@@ -110,16 +112,20 @@ async def calculate_prediction(
 
     # CHECK POINT
     print(f"CHECK -> SCALER FILE TYPE: \n {type(scaler_input)}")
+    print(f"Scaler input print: {scaler_input}")
     print("scaler_input features:", getattr(scaler_input, "n_features_in_", "NOT FITTED"))
     print("scaler_output features:", getattr(scaler_output, "n_features_in_", "NOT FITTED"))
     print(scaler_input)
     # -------------------------------
 
+    raw_x = None
     if data_input is not None:
+        print(f"EXAMPLE OF DATA INPUT: {data_input.iloc[0]}")
         raw_x_original = data_input.to_numpy() if hasattr(data_input, "to_numpy") else data_input
         raw_x = raw_x_original.copy().astype(np.float32)
         if scaler_input is not None and hasattr(scaler_input, "transform"):
             raw_x[:,column_index] = scaler_input.transform(raw_x[:,column_index])
+            print(f"SCALER INPUT DATA EXAMPLE: {raw_x} vs. {raw_x_original}")
 
         # loading the model with async function:
         print(f"PHASE 4: DOWNLOADING the model")
@@ -131,10 +137,16 @@ async def calculate_prediction(
             print(f"PHASE 5: PREDICTION")
             prediction_result = model.predict(raw_x, verbose=0)[0]
             # 2. If it's a 1D array or list, ensure it's 2D for the scaler:
-            if scaler_output is not None and hasattr(scaler_input, "transform"):
+            if scaler_output is not None and hasattr(scaler_output, "transform"):
                 if len(prediction_result.shape) == 1:
                     prediction_result = prediction_result.reshape(1, -1)
                 prediction_result = scaler_output.inverse_transform(prediction_result)
+            # CHECK SUMMARY in prediction:
+            print("PRED SUMMARY (min, max, mean, first3):",
+                float(np.min(prediction_result)),
+                float(np.max(prediction_result)),
+                float(np.mean(prediction_result)),
+                prediction_result[0, :3])
         else:
             print("FAKE PREDICTION!")
             prediction_result = round(Area * 0.45 + form_data.Height * 0.12, 2)

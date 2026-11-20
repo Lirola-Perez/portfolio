@@ -1,5 +1,5 @@
 from tabnanny import verbose
-
+import numpy as np
 import tensorflow as tf
 from backend_linker import SupabaseStorage
 from pathlib import Path
@@ -11,10 +11,10 @@ class NeuronalNetwork:
 
         self.model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=[input_dim]),
-            tf.keras.layers.Dense(8, activation='relu'),
-            tf.keras.layers.Dense(16, activation='relu'),
+            tf.keras.layers.Dense(32, activation='relu'),
+            tf.keras.layers.Dense(64, activation='relu'),
             # tf.keras.layers.Dropout(0.2), # leave 20% neurons die
-            tf.keras.layers.Dense(16, activation='relu'),
+            tf.keras.layers.Dense(128, activation='relu'),
             # there is no activation in final layer -> Regresion output
             tf.keras.layers.Dense(output_dim)
         ])
@@ -69,4 +69,17 @@ class NeuronalNetwork:
         if not file_name:
             return Path(temp_dir)
         return Path(temp_dir / file_name)
+
+    def coefficient_test(self,columns):
+        layer0 = self.model.layers[0]
+        weights = layer0.get_weights()
+        W0 = weights[0]  # shape: (n_features, hidden_units)
+        print("=== FIRST-LAYER WEIGHT MAGNITUDE PER FEATURE ===")
+        for idx, col in enumerate(columns):
+            row_w = W0[idx]
+            print(
+                f"[{idx:2d}] {col:48s} | "
+                f"max|w|={np.max(np.abs(row_w)):.6f} | "
+                f"l2={np.linalg.norm(row_w):.6f}"
+            )
     
