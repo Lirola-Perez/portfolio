@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Annotated
 import pandas as pd
 import tensorflow as tf
+import numpy as np
 import pickle
 import asyncio
 from fastapi import FastAPI, Form, Request
@@ -87,6 +88,12 @@ async def calculate_prediction(
     #print(data_input)
     print(f"CHECK -> Training columns: {training_columns}")
 
+    columns_to_scale = ["Thickness", "Conductivity"]
+    if training_columns:
+        column_index = [training_columns.index(name) for name in columns_to_scale]
+    else:
+        column_index = []
+
     # -- DOWNLOADING THE SCALERS ---
     print(f"PHASE 3: Prepared data. DOWNLOADING the scalers")
     # retrieving from supabase, temporal folder+file, async-function and loading
@@ -109,9 +116,10 @@ async def calculate_prediction(
     # -------------------------------
 
     if data_input is not None:
-        raw_x = data_input.to_numpy() if hasattr(data_input, "to_numpy") else data_input
+        raw_x_original = data_input.to_numpy() if hasattr(data_input, "to_numpy") else data_input
+        raw_x = raw_x_original.copy().astype(np.float32)
         if scaler_input is not None and hasattr(scaler_input, "transform"):
-            raw_x = scaler_input.transform(raw_x)
+            raw_x[:,column_index] = scaler_input.transform(raw_x[:,column_index])
 
         # loading the model with async function:
         print(f"PHASE 4: DOWNLOADING the model")
