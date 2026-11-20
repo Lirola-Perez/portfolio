@@ -52,6 +52,11 @@ services:
         condition: service_completed_successfully
     environment:
       - PYTHONUNBUFFERED=1
+      # matplotlib env definition ----
+      - MPLCONFIGDIR=/tmp/matplotlib_cache
+      - XDG_CACHE_HOME=/tmp/cache
+      - HOME=/tmp
+      # ------------------------------
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
     env_file:
@@ -59,6 +64,7 @@ services:
     # Mounting volume for commoon files
     volumes:
       - ./common_storage:/app/storage
+      - ./common_storage/graphs:/app/storage/graphs
 
   # FRONT END SERVICE
   ui-service:

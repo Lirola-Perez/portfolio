@@ -11,8 +11,9 @@ class NeuronalNetwork:
 
         self.model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=[input_dim]),
+            tf.keras.layers.Dense(8, activation='relu'),
             tf.keras.layers.Dense(16, activation='relu'),
-            tf.keras.layers.Dense(16, activation='relu'),
+            # tf.keras.layers.Dropout(0.2), # leave 20% neurons die
             tf.keras.layers.Dense(16, activation='relu'),
             # there is no activation in final layer -> Regresion output
             tf.keras.layers.Dense(output_dim)
@@ -26,7 +27,7 @@ class NeuronalNetwork:
         # Compile the model
         self.model.compile(
             optimizer=custom_optimizer,
-            loss='mse',             # Mean Squared Error penalizes big peaks
+            loss='huber',             # Mean Squared Error penalizes big peaks
             metrics=['mae']         # Mean Absolute Error for easy-to-read evaluation
         )
 
@@ -34,7 +35,7 @@ class NeuronalNetwork:
 
         early_stopping = tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',         # watch the validation loss
-            patience=10,                # stops if not improved in 10 epochs
+            patience=30,                # stops if not improved in 10 epochs
             restore_best_weights=True   # keeps best weights
         )
 

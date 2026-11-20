@@ -1,3 +1,4 @@
+import array
 import json
 import os
 import pandas as pd
@@ -33,7 +34,7 @@ class Input:
         except FileNotFoundError:
             print("File Not Found. Be sure all simulations are 'Processed'.")
 
-    def separating(self,x,y,size=0.3):
+    def separating(self,x,y,size=0.3) -> list:
         return train_test_split(x,y,test_size=size, random_state=42)
 
     def scaler(self,data,columns=None,mode:str="train",fitted_scaler=None,data_class: str | None = None):

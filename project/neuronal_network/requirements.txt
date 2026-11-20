@@ -6,3 +6,4 @@ scikit-learn
 tensorflow
 supabase
 sqlalchemy
+matplotlib
