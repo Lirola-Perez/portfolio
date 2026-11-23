@@ -34,4 +34,9 @@ variable "database_url" {
   sensitive   = true
 }
 
+variable "image_tag" {
+  type    = string
+  default = "master"
+}
+
 

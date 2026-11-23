@@ -28,15 +28,16 @@ resource "google_project_iam_member" "cloud_run_artifact_registry" {
 
 # the 5 microservices pointing to GHCR artifacts (GitHub)
 locals {
+
   web_services = {
-    "service-ui" = "ghcr.io/lirola-perez/portfolio/service_ui:master"
+    "service-ui" = "ghcr.io/lirola-perez/portfolio/service_ui:${var.image_tag}"
   }
 
   batch_jobs = {
-    "service-core"        = "ghcr.io/lirola-perez/portfolio/service_core:master"
-    "service-runner"      = "ghcr.io/lirola-perez/portfolio/service_runner:master"
-    "service-postprocess" = "ghcr.io/lirola-perez/portfolio/service_postprocess:master"
-    "neuronal-network"    = "ghcr.io/lirola-perez/portfolio/neuronal_network:master"
+    "service-core"        = "ghcr.io/lirola-perez/portfolio/service_core:${var.image_tag}"
+    "service-runner"      = "ghcr.io/lirola-perez/portfolio/service_runner:${var.image_tag}"
+    "service-postprocess" = "ghcr.io/lirola-perez/portfolio/service_postprocess:${var.image_tag}"
+    "neuronal-network"    = "ghcr.io/lirola-perez/portfolio/neuronal_network:${var.image_tag}"
   }
 }
 
