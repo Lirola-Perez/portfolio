@@ -103,5 +103,8 @@ jobs:
           context: ${{ matrix.service.path }} # <- Here points as the ORIGIN (each services as in the docker-compose.yml)
           file: ${{ matrix.service.path }}/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          # tags: ${{ steps.meta.outputs.tags }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
           labels: ${{ steps.meta.outputs.labels }}
