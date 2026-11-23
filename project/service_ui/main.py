@@ -222,10 +222,10 @@ def data_preparation(form_data:Annotated, volume:float, columns_order=None):
     if columns_order is not None:
         feature_dict = {col: 0.0 for col in list(columns_order)}
 
-        if "Area" in feature_dict:
-            feature_dict["Area"] = form_data.Area
-        if "Volume" in feature_dict:
-            feature_dict["Volume"] = volume
+        # if "Area" in feature_dict:
+        #     feature_dict["Area"] = form_data.Area
+        # if "Volume" in feature_dict:
+        #     feature_dict["Volume"] = volume
         if "Conductivity" in feature_dict:
             feature_dict["Conductivity"] = form_data.Conductivity
         if "Thickness" in feature_dict:

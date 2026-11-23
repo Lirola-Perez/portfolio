@@ -47,7 +47,7 @@ def test_data_preparation_logic():
     Area = 100
     volume = Area * form_data.Height
 
-    df = data_preparation(form_data=form_data,volume=volume,columns_order=dummy_columns)
+    df,_ = data_preparation(form_data=form_data,volume=volume,columns_order=dummy_columns)
 
     assert isinstance(df,pd.DataFrame)
     assert df.shape == (1,len(dummy_columns))
