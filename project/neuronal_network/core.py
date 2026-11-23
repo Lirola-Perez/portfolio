@@ -11,10 +11,10 @@ class NeuronalNetwork:
 
         self.model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=[input_dim]),
+            tf.keras.layers.Dense(16, activation='relu'),
             tf.keras.layers.Dense(32, activation='relu'),
-            tf.keras.layers.Dense(64, activation='relu'),
             # tf.keras.layers.Dropout(0.2), # leave 20% neurons die
-            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dense(32, activation='relu'),
             # there is no activation in final layer -> Regresion output
             tf.keras.layers.Dense(output_dim)
         ])
