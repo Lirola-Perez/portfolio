@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 from typing import Annotated
 import pandas as pd
@@ -32,8 +33,6 @@ model_path = os.path.join(STORAGE_PATH,"model.keras")
 scaler_input_path = os.path.join(STORAGE_PATH,"scaler_train_input.pkl")
 scaler_output_path = os.path.join(STORAGE_PATH,"scaler_train_output.pkl")
 columns_path = os.path.join(OUTPUT_PATH,"column_list.json")
-scaler_x_file_name = "scaler_train_input.pkl"
-scaler_y_file_name = "scaler_train_output.pkl"
 model_file_name = "model.keras"
 column_file = "column_list.json"
 
@@ -84,11 +83,12 @@ async def calculate_prediction(
     # -------
     
     print(f"PHASE 2: PREPARING the data")
-    data_input = data_preparation(form_data,volume,columns_order=training_columns)
+    data_input, target_col = data_preparation(form_data,volume,columns_order=training_columns)
     if data_input is not None:
         print(f"DATA INPUT: {data_input.shape}")
     print(f"CHECK -> Training columns: {training_columns}")
 
+    # Preparing columns to scale:
     columns_to_scale = ["Thickness", "Conductivity"]
     if training_columns:
         column_index = [training_columns.index(name) for name in columns_to_scale]
@@ -99,33 +99,44 @@ async def calculate_prediction(
     # -- DOWNLOADING THE SCALERS ---
     print(f"PHASE 3: Prepared data. DOWNLOADING the scalers")
     # retrieving from supabase, temporal folder+file, async-function and loading
-    scaler_input = await asyncio.to_thread(
+    scaler_columns = []
+    for name in columns_to_scale:
+        column_name = f"scaler_train_column_{name}.pkl"
+        scaler = await asyncio.to_thread(
             _file_downloader_from_out_folder,
             "model",
-            scaler_x_file_name)
+            column_name)
+        scaler_columns.append(scaler)
 
-    # retrieving from supabase, temporal folder+file, async-function and loading
-    scaler_output = await asyncio.to_thread(
-        _file_downloader_from_out_folder,
-        "model",
-        scaler_y_file_name)
+        # CHECK POINT
+        print(f"CHECK -> SCALER FILE TYPE: \n {type(scaler)}")
+        print(f"Scaler input print: {column_name}")
+        print("scaler_input features:", getattr(scaler, "n_features_in_", "NOT FITTED"))
+        print(scaler)
+        # -------------------------------
 
-    # CHECK POINT
-    print(f"CHECK -> SCALER FILE TYPE: \n {type(scaler_input)}")
-    print(f"Scaler input print: {scaler_input}")
-    print("scaler_input features:", getattr(scaler_input, "n_features_in_", "NOT FITTED"))
-    print("scaler_output features:", getattr(scaler_output, "n_features_in_", "NOT FITTED"))
-    print(scaler_input)
-    # -------------------------------
+    if target_col is not None:
+        clean_name = sanitize_storage_key(target_col)
+        name_output = f"scaler_train_{clean_name}.pkl"
+        scaler_output = await asyncio.to_thread(
+            _file_downloader_from_out_folder,
+            "model",
+            name_output)
+    else:
+        raise ValueError
 
     raw_x = None
     if data_input is not None:
         print(f"EXAMPLE OF DATA INPUT: {data_input.iloc[0]}")
         raw_x_original = data_input.to_numpy() if hasattr(data_input, "to_numpy") else data_input
         raw_x = raw_x_original.copy().astype(np.float32)
-        if scaler_input is not None and hasattr(scaler_input, "transform"):
-            raw_x[:,column_index] = scaler_input.transform(raw_x[:,column_index])
-            print(f"SCALER INPUT DATA EXAMPLE: {raw_x} vs. {raw_x_original}")
+        for scaler_input,column_idx in zip(scaler_columns,column_index):
+            print(f"SCALER: {scaler_input} \nCOLUMN_INDEX: {column_idx}")
+            col_2d = raw_x[:,column_idx]
+            print(f"INPUT VECTOR SHAPE: {col_2d.shape}")
+            if scaler_input is not None and hasattr(scaler_input, "transform"):
+                raw_x[:,column_idx] = scaler_input.transform(col_2d.reshape(-1,1))
+                print(f"SCALER INPUT DATA EXAMPLE: {raw_x} vs. {raw_x_original}")
 
         # loading the model with async function:
         print(f"PHASE 4: DOWNLOADING the model")
@@ -136,6 +147,7 @@ async def calculate_prediction(
             # ---- PREDICTION ----------------------
             print(f"PHASE 5: PREDICTION")
             prediction_result = model.predict(raw_x, verbose=0)[0]
+
             # 2. If it's a 1D array or list, ensure it's 2D for the scaler:
             if scaler_output is not None and hasattr(scaler_output, "transform"):
                 if len(prediction_result.shape) == 1:
@@ -232,9 +244,9 @@ def data_preparation(form_data:Annotated, volume:float, columns_order=None):
         
         # 2. Convert to a DataFrame (this preserves column names if your model was trained on a DataFrame)
         input_df = pd.DataFrame([feature_dict])
-        return input_df
+        return input_df,target_col
     else:
-        return None
+        return None, None
 
 def _file_downloader_from_out_folder(folder_name,file_name):
     # retrieving from supabase, temporal folder+file, async-function and loading
@@ -262,4 +274,11 @@ def _file_loader(data,temp_path):
             return json.loads(data.decode("utf-8"))
     else:
         return data
+
+def sanitize_storage_key(name: str) -> str:
+    # Replace any character outside letters, numbers, underscore, hyphen, or dot with '_'
+    cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "_", name)
+    # Collapse repeated underscores and trim leading/trailing underscores
+    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+    return cleaned
 
