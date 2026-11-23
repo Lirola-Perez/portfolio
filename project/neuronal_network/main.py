@@ -43,15 +43,15 @@ x,y = data.input_output_selector()
 # print(f"ROW INDEXES COLLECTED: {row_idx}")
 
 # ----- TESTING PHASE ---------------
-test = ModelTesting(x,y)
-# Observing the variables.
-test.variable_separator(x,file_name='X_values_trained')
-test.variable_separator(y,file_name='Y_values_trained')
-# Correlation testing:
-test.plot_correlation_temp(x)
-# testing linear model L1 (Lasso) or L2(Ridge)
-regularizer = test.regularizers(regularizer_type='Ridge',alpha=1)
-test.variable_separator(regularizer,file_name='Linear_model_testing')
+# test = ModelTesting(x,y)
+# # Observing the variables.
+# test.variable_separator(x,file_name='X_values_trained')
+# test.variable_separator(y,file_name='Y_values_trained')
+# # Correlation testing:
+# test.plot_correlation_temp(x)
+# # testing linear model L1 (Lasso) or L2(Ridge)
+# regularizer = test.regularizers(regularizer_type='Ridge',alpha=1)
+# test.variable_separator(regularizer,file_name='Linear_model_testing')
 
 # ----- SPLITING THE DATA ------------
 # splitting the data
