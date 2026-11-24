@@ -18,5 +18,5 @@ COPY . .
 RUN useradd app
 USER app
 
-# --host 0.0.0.0 opening to requests, port 8000
-CMD [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000" ]
+# --host 0.0.0.0 opening to requests, port 8080
+CMD [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080" ]
