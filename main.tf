@@ -129,11 +129,13 @@ resource "google_cloud_run_v2_job" "batch_job" {
 
 }
 
-# Make services publicly accessible as a portfolio showcase
-# resource "google_cloud_run_v2_service_iam_member" "public_access" {
-#   for_each = local.microservices
-#   location = google_cloud_run_v2_service.services[each.key].location
-#   name     = google_cloud_run_v2_service.services[each.key].name
-#   role     = "roles/run.invoker"
-#   member   = "allUsers"
-# }
+# Make service publicly accessible as a portfolio showcase
+resource "google_cloud_run_v2_service_iam_member" "public_access" {
+  for_each = local.web_services
+
+  project  = google_cloud_run_v2_service.web_service[each.key].project
+  location = google_cloud_run_v2_service.web_service[each.key].location
+  name     = google_cloud_run_v2_service.web_service[each.key].name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
