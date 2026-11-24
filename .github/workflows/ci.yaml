@@ -104,9 +104,9 @@ jobs:
             # Pointer to the commits
             type=sha,prefix=sha-
             # Pointer to the versions (when realeased): types: v1.0.0 or :1.0 or :1.0.0
-            type=semver, patter=v{{version}}
-            type=semver, patter={{major}}.{{minor}}
-            type=semver, patter={{version}}
+            type=semver, pattern=v{{version}}
+            type=semver, pattern={{major}}.{{minor}}
+            type=semver, pattern={{version}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
