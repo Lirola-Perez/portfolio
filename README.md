@@ -2,7 +2,7 @@
 
 ## Production MLOps Simulation & Database Pipeline
 
-[![CI Pipeline](https://github.com/Lirola-Perez/portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/Lirola-Perez/portfolio/actions/workflows/ci.yaml)
+[![CI Pipeline](https://github.com/Lirola-Perez/portfolio/actions/workflows/ci.yaml/badge.svg)](https://github.com/Lirola-Perez/portfolio/actions/workflows/ci.yaml)
 
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
 
