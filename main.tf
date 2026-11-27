@@ -60,20 +60,35 @@ resource "google_cloud_run_v2_service" "web_service" {
     }
 
     containers {
-      image = "europe-west1-docker.pkg.dev/${var.gcp_project_id}/cache/${each.value}"
+      image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/cache/${each.value}"
 
       env {
-        name  = "SUPABASE_URL"
-        value = var.supabase_url
+        name = "SUPABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.url_supabase_secret.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
-        name  = "SUPABASE_KEY"
-        value = var.supabase_service_role_key
+        name = "SUPABASE_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.pass_supabase_secret.secret_id
+            version = "latest"
+          }
+        }
       }
 
       env {
-        name  = "DATABASE_URL"
-        value = var.database_url
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.url_database_secret.secret_id
+            version = "latest"
+          }
+        }
       }
 
       resources {
@@ -101,20 +116,35 @@ resource "google_cloud_run_v2_job" "batch_job" {
     # jobs does not need scaling. One time job.
     template {
       containers {
-        image = "europe-west1-docker.pkg.dev/${var.gcp_project_id}/cache/${each.value}"
+        image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/cache/${each.value}"
 
         env {
-          name  = "SUPABASE_URL"
-          value = var.supabase_url
+          name = "SUPABASE_URL"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.url_supabase_secret.secret_id
+              version = "latest"
+            }
+          }
         }
         env {
-          name  = "SUPABASE_KEY"
-          value = var.supabase_service_role_key
+          name = "SUPABASE_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.pass_supabase_secret.secret_id
+              version = "latest"
+            }
+          }
         }
 
         env {
-          name  = "DATABASE_URL"
-          value = var.database_url
+          name = "DATABASE_URL"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.url_database_secret.secret_id
+              version = "latest"
+            }
+          }
         }
 
         resources {
